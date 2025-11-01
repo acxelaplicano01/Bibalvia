@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1 class="text-2xl font-bold m-4">Detalle del Sector: {{ sector.nombre }}</h1>
+<div class="m-4 p-4 border border-gray-300 rounded-lg shadow-sm">
+    <p class="mb-2"><strong>Latitud:</strong> {{ sector.latitud }}</p>
+    <p class="mb-2"><strong>Longitud:</strong> {{ sector.longitud }}</p>
+    <p class="mb-2"><strong>Descripción:</strong> {{ sector.descripcion }}</p>
+    <!-- Agrega más detalles del sector según sea necesario -->
+</div>
+
+
+{% endblock %}

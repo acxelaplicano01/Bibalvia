@@ -1,8 +1,17 @@
 from django.core.management.base import BaseCommand
-from dashboard.models import Sector, Bivalvo, HistorialTemperatura, HistorialSalinidad, HistorialHumedad, HistorialPh, HistorialTurbidez, HistorialClasificacion
 from django.utils import timezone
 from decimal import Decimal
 import random
+from dashboard.models import (
+    Sector, 
+    Bivalvo, 
+    HistorialTemperatura, 
+    HistorialSalinidad,
+    HistorialPh,
+    HistorialHumedad,
+    HistorialTurbidez,
+    HistorialClasificacion
+)
 
 class Command(BaseCommand):
     help = 'Seed database with initial data'
