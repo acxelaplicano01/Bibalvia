@@ -4,9 +4,10 @@
 
 <div class="size-full flex-1 overflow-auto">
 
+    {# Mapa y Métricas #}
     <section class="flex gap-4 m-4 flex-col sm:flex-row">
 
-        <article class="flex flex-col p-4 border bg-white border-gray-300 rounded-lg shadow-sm relative sm:w-2/5">
+        <article class="flex flex-col p-4 border bg-white border-gray-300 rounded-lg shadow-sm relative sm:w-1/2">
             <h2 class="text-lg font-semibold w-full text-center">Ubicación</h2>
             <div class="flex flex-col text-sm mb-4 gap-1">
                 <p class="text-gray-700"><b>Latitud:</b> {{ sector.latitud }} </p>
@@ -21,7 +22,7 @@
         </article>
 
 
-        <div class="w-full sm:w-3/5 flex flex-col gap-4 h-full">
+        <div class="w-full sm:w-1/2 flex flex-col gap-4 h-full">
             <div class="flex gap-4">
                 <article
                     class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
@@ -76,6 +77,35 @@
             </article>
         </div>
     </section>
+
+    {# Gráfico #}
+    <section class="bg-white border border-gray-300 rounded-lg m-4 p-4 h-112 flex flex-col">
+        <h3 class="font-semibold mb-4 shrink-0">
+            Valores en Tiempo Real
+        </h3>
+        <article class="flex-1 flex items-center justify-center rounded-lg bg-green-100">
+            <p class="text-gray-600">Gráfico...</p>
+        </article>
+    </section>
+
+    {# Logs y Registro de Clasificaciones #}
+    <div class="w-full lg:w-1/2 mx-4 mb-4">
+        <div class="bg-white border border-gray-300 rounded-lg shadow-sm">
+            <div class="p-4">
+                <h6 class="font-semibold mb-3">Logs</h6>
+                
+                {# El contenido de 'pre' debe ir al inicio de la línea, toma tal cual el texto #}
+                <pre class="h-72 overflow-auto bg-slate-900 text-cyan-100 p-3 rounded-lg text-sm font-mono">
+Iniciando dashboard...
+                </pre>
+                
+                <div class="mt-3 flex items-center gap-2 text-gray-500 text-xs">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>Últimos eventos del sistema</span>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
