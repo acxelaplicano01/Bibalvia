@@ -14,6 +14,8 @@
     --color-red-800: oklch(44.4% 0.177 26.899);
     --color-red-900: oklch(39.6% 0.141 25.723);
     --color-red-950: oklch(25.8% 0.092 26.042);
+    --color-amber-400: oklch(82.8% 0.189 84.429);
+    --color-amber-500: oklch(76.9% 0.188 70.08);
     --color-green-100: oklch(96.2% 0.044 156.743);
     --color-green-300: oklch(87.1% 0.15 154.449);
     --color-green-400: oklch(79.2% 0.209 151.711);
@@ -26,6 +28,11 @@
     --color-blue-600: oklch(54.6% 0.245 262.881);
     --color-blue-700: oklch(48.8% 0.243 264.376);
     --color-indigo-600: oklch(51.1% 0.262 276.966);
+    --color-pink-500: oklch(65.6% 0.241 354.308);
+    --color-rose-300: oklch(81% 0.117 11.638);
+    --color-rose-400: oklch(71.2% 0.194 13.428);
+    --color-slate-100: oklch(96.8% 0.007 247.896);
+    --color-slate-200: oklch(92.9% 0.013 255.508);
     --color-gray-50: oklch(98.5% 0.002 247.839);
     --color-gray-100: oklch(96.7% 0.003 264.542);
     --color-gray-200: oklch(92.8% 0.006 264.531);
@@ -38,6 +45,8 @@
     --color-neutral-400: oklch(70.8% 0 0);
     --color-neutral-500: oklch(55.6% 0 0);
     --color-neutral-600: oklch(43.9% 0 0);
+    --color-neutral-700: oklch(37.1% 0 0);
+    --color-neutral-800: oklch(26.9% 0 0);
     --color-black: #000;
     --color-white: #fff;
     --spacing: 0.25rem;
@@ -238,6 +247,18 @@
   .top-16 {
     top: calc(var(--spacing) * 16);
   }
+  .top-24 {
+    top: calc(var(--spacing) * 24);
+  }
+  .top-26 {
+    top: calc(var(--spacing) * 26);
+  }
+  .top-27 {
+    top: calc(var(--spacing) * 27);
+  }
+  .top-28 {
+    top: calc(var(--spacing) * 28);
+  }
   .right-4 {
     right: calc(var(--spacing) * 4);
   }
@@ -373,6 +394,9 @@
   .h-64 {
     height: calc(var(--spacing) * 64);
   }
+  .h-72 {
+    height: calc(var(--spacing) * 72);
+  }
   .h-96 {
     height: calc(var(--spacing) * 96);
   }
@@ -415,6 +439,9 @@
   .min-h-64 {
     min-height: calc(var(--spacing) * 64);
   }
+  .min-h-72 {
+    min-height: calc(var(--spacing) * 72);
+  }
   .min-h-\[100vh\] {
     min-height: 100vh;
   }
@@ -426,6 +453,18 @@
   }
   .w-1\/2 {
     width: calc(1/2 * 100%);
+  }
+  .w-2 {
+    width: calc(var(--spacing) * 2);
+  }
+  .w-2\/5 {
+    width: calc(2/5 * 100%);
+  }
+  .w-3 {
+    width: calc(var(--spacing) * 3);
+  }
+  .w-3\/5 {
+    width: calc(3/5 * 100%);
   }
   .w-full {
     width: 100%;
@@ -493,6 +532,12 @@
   }
   .justify-end {
     justify-content: flex-end;
+  }
+  .gap-0 {
+    gap: calc(var(--spacing) * 0);
+  }
+  .gap-1 {
+    gap: calc(var(--spacing) * 1);
   }
   .gap-2 {
     gap: calc(var(--spacing) * 2);
@@ -640,6 +685,12 @@
   .bg-red-900 {
     background-color: var(--color-red-900);
   }
+  .bg-slate-100 {
+    background-color: var(--color-slate-100);
+  }
+  .bg-slate-200 {
+    background-color: var(--color-slate-200);
+  }
   .bg-white {
     background-color: var(--color-white);
   }
@@ -740,6 +791,15 @@
     --tw-font-weight: var(--font-weight-semibold);
     font-weight: var(--font-weight-semibold);
   }
+  .text-amber-400 {
+    color: var(--color-amber-400);
+  }
+  .text-amber-500 {
+    color: var(--color-amber-500);
+  }
+  .text-blue-500 {
+    color: var(--color-blue-500);
+  }
   .text-blue-600 {
     color: var(--color-blue-600);
   }
@@ -761,8 +821,26 @@
   .text-indigo-600 {
     color: var(--color-indigo-600);
   }
+  .text-neutral-700 {
+    color: var(--color-neutral-700);
+  }
+  .text-neutral-800 {
+    color: var(--color-neutral-800);
+  }
+  .text-pink-500 {
+    color: var(--color-pink-500);
+  }
+  .text-red-600 {
+    color: var(--color-red-600);
+  }
   .text-red-700 {
     color: var(--color-red-700);
+  }
+  .text-rose-300 {
+    color: var(--color-rose-300);
+  }
+  .text-rose-400 {
+    color: var(--color-rose-400);
   }
   .text-white {
     color: var(--color-white);
@@ -1110,6 +1188,11 @@
       height: 100%;
     }
   }
+  .sm\:w-1\/2 {
+    @media (width >= 40rem) {
+      width: calc(1/2 * 100%);
+    }
+  }
   .sm\:w-1\/3 {
     @media (width >= 40rem) {
       width: calc(1/3 * 100%);
@@ -1118,6 +1201,11 @@
   .sm\:w-2\/5 {
     @media (width >= 40rem) {
       width: calc(2/5 * 100%);
+    }
+  }
+  .sm\:w-3\/5 {
+    @media (width >= 40rem) {
+      width: calc(3/5 * 100%);
     }
   }
   .sm\:flex-col {
@@ -1179,6 +1267,11 @@
   .lg\:grid-cols-3 {
     @media (width >= 64rem) {
       grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  .lg\:gap-2 {
+    @media (width >= 64rem) {
+      gap: calc(var(--spacing) * 2);
     }
   }
   .\@sm\:sm\:flex-col {
