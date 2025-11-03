@@ -5,24 +5,79 @@
     {% load static %}
     <link rel="stylesheet" href="{% static 'dist/styles.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <title>{% block title %}My amazing site{% endblock %}</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bibalvia</title>
+
 </head>
 
-<body class="flex flex-col">
+<body class="flex flex-col h-screen">
 
     {% block navbar %}
-    <nav class="px-4 py-3 bg-blue-600 text-white text-xl flex flex-col gap-2 sm:flex-row sm:justify-between">
-
-        <a href="#"><i class="fa-solid fa-seedling"></i> Bibalvia</a>
-        <span class="text-sm px-3 py-1 rounded-full bg-white/20 w-max">Última Actualización: --:-- p.m.</span>
-        <span class="text-sm px-3 py-1 rounded-full bg-green-500/75 w-max">WS: Conectado </span>
-
+    <nav class="px-4 py-2 bg-blue-600 text-white flex justify-between items-center shrink-0">
+        <a href="{% url 'home' %}"><i class="fa-solid fa-seedling"></i> Bibalvia</a>
+        {% block nav_title%}{% endblock %}
+        <span class="text-sm px-3 py-1 rounded-full bg-green-500/60 w-max">WS: Conectado </span>
     </nav>
     {% endblock %}
 
-    <div id="content">
+    <!-- Contenedor de notificaciones -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <div class="flex-1 sm:overflow-hidden" id="content">
         {% block content %}{% endblock %}
     </div>
+
+    <script>
+        // Sistema de notificaciones toast
+        function mostrarToast(mensaje, tipo = 'success') {
+            const container = document.getElementById('toast-container');
+
+            const toast = document.createElement('div');
+            toast.className = `bg-white px-4 py-2 rounded-lg shadow-lg shadow-neutral-600 font-semibold transform transition-all duration-300 translate-x-full border ${tipo === 'success' ? 'border-green-600' : 'border-red-700'}
+                }`;
+
+            toast.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid ${tipo === 'success' ? 'fa-circle-check text-green-600' : 'fa-circle-exclamation text-red-700'}"></i>
+                    <span>${mensaje}</span>
+                </div>
+            `;
+
+            container.appendChild(toast);
+
+            // Animación de entrada
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 10);
+
+            // Auto-ocultar después de 4 segundos
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => {
+                    container.removeChild(toast);
+                }, 300);
+            }, 4000);
+        }
+
+        // Verificar si hay mensajes de Django en sessionStorage
+        window.addEventListener('DOMContentLoaded', function () {
+            const mensaje = sessionStorage.getItem('toast_mensaje');
+            const tipo = sessionStorage.getItem('toast_tipo');
+
+            if (mensaje) {
+                mostrarToast(mensaje, tipo || 'success');
+                sessionStorage.removeItem('toast_mensaje');
+                sessionStorage.removeItem('toast_tipo');
+            }
+        });
+    </script>
 </body>
 
 </html>
