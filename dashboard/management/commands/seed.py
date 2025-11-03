@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from django.db import connection
 from decimal import Decimal
 import random
 from dashboard.models import (
@@ -22,14 +23,33 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if options['clear']:
             self.stdout.write('Clearing existing data...')
+            
+            # Eliminar datos
+            HistorialClasificacion.objects.all().delete()
             HistorialTemperatura.objects.all().delete()
             HistorialSalinidad.objects.all().delete()
             HistorialHumedad.objects.all().delete()
             HistorialPh.objects.all().delete()
             HistorialTurbidez.objects.all().delete()
-            Sector.objects.all().delete()
             Bivalvo.objects.all().delete()
-            self.stdout.write(self.style.SUCCESS('Data cleared!'))
+            Sector.objects.all().delete()
+            
+            # Resetear secuencias de autoincremento
+            with connection.cursor() as cursor:
+                tablas = [
+                    'dashboard_sector',
+                    'dashboard_bivalvo',
+                    'dashboard_historialtemperatura',
+                    'dashboard_historialsalinidad',
+                    'dashboard_historialph',
+                    'dashboard_historialhumedad',
+                    'dashboard_historialturbidez',
+                    'dashboard_historialclasificacion'
+                ]
+                for tabla in tablas:
+                    cursor.execute(f"DELETE FROM sqlite_sequence WHERE name='{tabla}'")
+            
+            self.stdout.write(self.style.SUCCESS('Data cleared and IDs reset!'))
 
         self.stdout.write('Seeding database...')
 
