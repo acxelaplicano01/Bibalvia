@@ -20,9 +20,15 @@
 <body class="flex flex-col h-screen bg-slate-200">
 
     {% block navbar %}
-    <nav class="px-4 py-2 bg-blue-600 text-white flex justify-between items-center shrink-0">
-        <a href="{% url 'home' %}"><i class="fa-solid fa-seedling"></i> Bibalvia</a>
-        <span class="text-sm px-3 py-1 rounded-full bg-green-500/60 w-max">WS: Conectado </span>
+    <nav class="px-4 py-3 bg-blue-600 text-white flex items-center justify-between shrink-0 text-lg">
+        <a href="{% url 'home' %}" class="flex gap-2 items-center w-max">
+            <i class="fa-solid fa-seedling"></i>
+            Bibalvia
+        </a>
+        <div class="text-base flex gap-2 items-center">
+            <i class="fa-solid fa-circle fa-2xs text-green-400"></i>
+            WS: Conectado
+        </div>
     </nav>
     {% endblock %}
 
