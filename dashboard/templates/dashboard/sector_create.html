@@ -8,7 +8,16 @@
 
 <div class="bg-white rounded-lg h-full flex flex-col sm:flex-row sm:overflow-hidden">
     <!-- Mapa -->
-    <div id="map" class="size-full min-h-64 sm:h-full shadow-md"></div>
+    <div class="relative size-full min-h-64 sm:h-full">
+        <div id="map" class="size-full shadow-md"></div>
+        
+        <!-- Botón para cambiar capa -->
+        <button id="toggleLayer"
+            class="absolute top-4 right-4 z-1000 bg-white hover:bg-gray-100 px-3 py-2 rounded-lg shadow-md border border-gray-300 text-sm font-medium transition-colors">
+            <i class="fa-solid fa-layer-group"></i>
+            <span id="layerName">Satélite</span>
+        </button>
+    </div>
 
     <form method="POST" class="bg-white flex flex-col h-max p-4 sm:h-full sm:w-2/5">
         {% csrf_token %}
@@ -63,19 +72,44 @@
     // Inicializar mapa centrado en Choluteca
     const map = L.map('map').setView([13.31065966, -87.17890633], 8);
 
-    // Agregar capa de OpenStreetMap
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 20,
+    // Definir las capas de tiles
+    const openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
         attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    });
+
+    const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles © Esri',
+        maxZoom: 19
+    });
+
+    // Agregar la capa por defecto (esriSatellite, OpenStreetMap)
+    let currentLayer = openStreetMap;
+    currentLayer.addTo(map);
+
+    // Botón para cambiar capas
+    document.getElementById('toggleLayer').addEventListener('click', function () {
+        const layerNameSpan = document.getElementById('layerName');
+
+        if (currentLayer === openStreetMap) {
+            map.removeLayer(openStreetMap);
+            esriSatellite.addTo(map);
+            currentLayer = esriSatellite;
+            layerNameSpan.textContent = 'Mapa';
+        } else {
+            map.removeLayer(esriSatellite);
+            openStreetMap.addTo(map);
+            currentLayer = openStreetMap;
+            layerNameSpan.textContent = 'Satélite';
+        }
+    });
 
     // Marcador que se moverá
     let marker = null;
-    let actualizandoProgramaticamente = false; // Flag para evitar loops infinitos
+    let actualizandoProgramaticamente = false;
 
     // Función para actualizar la ubicación
     function actualizarUbicacion(lat, lng, zoom = null, actualizarInputs = true) {
-
         // Validar coordenadas
         if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
             return;
@@ -89,19 +123,12 @@
             actualizandoProgramaticamente = false;
         }
 
-        // Actualizar inputs
-        // document.getElementById('latitud').value = lat.toFixed(8);
-        // document.getElementById('longitud').value = lng.toFixed(8);
-
         // Si ya existe un marcador, moverlo
         if (marker) {
             marker.setLatLng([lat, lng]);
-            marker.setPopupContent(`Lat: ${lat.toFixed(8)}<br>Lng: ${lng.toFixed(8)}`);
         } else {
             // Crear nuevo marcador
-            marker = L.marker([lat, lng]).addTo(map)
-                .bindPopup(`Lat: ${lat.toFixed(8)}<br>Lng: ${lng.toFixed(8)}`)
-                .openPopup();
+            marker = L.marker([lat, lng]).addTo(map);
         }
 
         // Centrar mapa en la ubicación
@@ -125,7 +152,7 @@
     const lngInput = document.getElementById('longitud');
 
     function actualizarDesdeInputs() {
-        if (actualizandoProgramaticamente) return; // Evitar loop infinito
+        if (actualizandoProgramaticamente) return;
 
         const lat = parseFloat(latInput.value);
         const lng = parseFloat(lngInput.value);
@@ -161,7 +188,6 @@
         const btn = this;
         const originalHTML = btn.innerHTML;
 
-        // Cambiar texto del botón
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Obteniendo ubicación...';
         btn.disabled = true;
 
@@ -170,21 +196,11 @@
                 function (position) {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
-                    const accuracy = position.coords.accuracy;
 
-                    // Actualizar ubicación con zoom más cercano
                     actualizarUbicacion(lat, lng, 18);
 
-                    // Restaurar botón
                     btn.innerHTML = originalHTML;
                     btn.disabled = false;
-
-                    // Mostrar precisión en el popup
-                    marker.bindPopup(`
-                        Lat: ${lat.toFixed(8)}<br>
-                        Lng: ${lng.toFixed(8)}<br>
-                        Precisión: ±${accuracy.toFixed(0)}m
-                    `).openPopup();
                 },
                 function (error) {
                     let mensaje = '';
@@ -203,14 +219,13 @@
                     }
                     alert(mensaje);
 
-                    // Restaurar botón
                     btn.innerHTML = originalHTML;
                     btn.disabled = false;
                 },
                 {
-                    enableHighAccuracy: true,  // Máxima precisión (usa GPS)
-                    timeout: 10000,            // Esperar máximo 10 segundos
-                    maximumAge: 0              // No usar caché
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
                 }
             );
         } else {
