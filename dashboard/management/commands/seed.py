@@ -11,7 +11,8 @@ from dashboard.models import (
     HistorialPh,
     HistorialHumedad,
     HistorialTurbidez,
-    HistorialClasificacion
+    HistorialClasificacion,
+    Zona
 )
 
 class Command(BaseCommand):
@@ -55,11 +56,35 @@ class Command(BaseCommand):
 
         # Crear sectores
         sectores = [
-            Sector.objects.create(latitud=Decimal('14.0583'), longitud=Decimal('-87.2068')),
-            Sector.objects.create(latitud=Decimal('15.5000'), longitud=Decimal('-88.0250')),
-            Sector.objects.create(latitud=Decimal('13.4894'), longitud=Decimal('-86.5780')),
+            Sector.objects.create(latitud=Decimal('14.0583'), longitud=Decimal('-87.2068'), nombre_sector='Sector A'),
+            Sector.objects.create(latitud=Decimal('15.5000'), longitud=Decimal('-88.0250'), nombre_sector='Sector B'),
+            Sector.objects.create(latitud=Decimal('13.4894'), longitud=Decimal('-86.5780'), nombre_sector='Sector C'),
         ]
         self.stdout.write(self.style.SUCCESS(f'Created {len(sectores)} sectors'))
+
+        for index, sector in enumerate(sectores, start=1):
+            lat = float(sector.latitud)
+            lng = float(sector.longitud)
+
+            geo = {
+                "type": "Polygon",
+                "coordinates": [[
+                    [lng - 0.0005, lat - 0.0005],
+                    [lng - 0.0005, lat + 0.0005],
+                    [lng + 0.0005, lat + 0.0005],
+                    [lng + 0.0005, lat - 0.0005],
+                    [lng - 0.0005, lat - 0.0005]
+                ]]
+            }
+            
+            zona, created = Zona.objects.get_or_create(
+                nombre=f"Zona {index}",
+                defaults={'geopoligono': geo}
+            )
+            
+            sector.zonas.add(zona)
+
+        self.stdout.write(self.style.SUCCESS(f'Added zones for {len(sectores)} sectors'))
 
         # Crear bivalvos
         bivalvos = [

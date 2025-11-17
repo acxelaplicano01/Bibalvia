@@ -7,37 +7,128 @@
     <div class="relative size-full min-h-64 sm:h-full">
         <div id="map" class="size-full shadow-md"></div>
 
-        <!-- Botón para cambiar capa -->
-        <button id="toggleLayer"
-            class="absolute top-4 right-4 z-1000 bg-white hover:bg-gray-100 px-3 py-2 rounded-lg shadow-md border border-gray-300 text-sm font-medium transition-colors">
-            <i class="fa-solid fa-layer-group"></i>
-            <span id="layerName">Satélite</span>
-        </button>
-    </div>
+        <!-- Controles del mapa -->
+        <div class="absolute top-4 right-4 z-1000 flex flex-col gap-2">
+            <button id="toggleLayer"
+                class="bg-white hover:bg-gray-100 px-3 py-2 rounded-lg shadow-md border border-gray-300 text-sm font-medium transition-colors">
+                <i class="fa-solid fa-layer-group"></i>
+                <span id="layerName">Satélite</span>
+            </button>
 
-    <form method="POST" class="bg-white flex flex-col h-max p-4 sm:h-full sm:w-2/5">
-        {% csrf_token %}
-        <div class="flex w-full flex-col mb-4 text-gray-800">
-            <span class="text-center w-full font-semibold text-lg">Registrar Sector</span>
-            <div class="flex flex-col w-full pb-4 mt-2">
-                <label class="mb-1 font-semibold" for="latitud">Latitud</label>
-                <input name="latitud" id="latitud"
-                    class="shadow-md text-xs sm:text-sm border rounded-lg border-gray-400 p-2" type="text"
-                    placeholder="Ej: 13.309">
-            </div>
-            <div class="flex flex-col w-full">
-                <label class="mb-1 font-semibold" for="longitud">Longitud</label>
-                <input name="longitud" id="longitud"
-                    class="shadow-md text-xs sm:text-sm border rounded-lg border-gray-400 p-2" type="text"
-                    placeholder="Ej: -87.178">
-            </div>
+            <button type="button" id="btnUbicacion"
+                class="bg-white hover:bg-gray-100 px-3 py-2 rounded-lg shadow-md border border-gray-300 text-sm font-medium transition-colors">
+                <i class="fa-solid fa-location-crosshairs"></i>
+                <span>Ubicación</span>
+            </button>
         </div>
 
-        <button type="button" id="btnUbicacion"
-            class="text-sm shadow-xl bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-500 active:bg-blue-700 transition-colors mb-4">
-            <i class="fa-solid fa-location-crosshairs"></i>
-            Ubicación Actual
-        </button>
+        <!-- Controles de polígono -->
+        <div id="controles-poligono"
+            class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-1000 bg-white rounded-lg shadow-lg border border-gray-300 p-3 hidden">
+            <div class="flex gap-2 items-center">
+                <button type="button" id="btnIniciarPoligono"
+                    class="px-4 py-2 rounded text-sm font-medium transition-colors bg-green-600 text-white hover:bg-green-500">
+                    <i class="fa-solid fa-play"></i>
+                    <span class="ml-1">Iniciar</span>
+                </button>
+                <button type="button" id="btnCerrarPoligono"
+                    class="px-4 py-2 rounded text-sm font-medium transition-colors bg-blue-600 text-white hover:bg-blue-500 hidden">
+                    <i class="fa-solid fa-check"></i>
+                    <span class="ml-1">Cerrar</span>
+                </button>
+                <button type="button" id="btnCancelarPoligono"
+                    class="px-4 py-2 rounded text-sm font-medium transition-colors bg-red-600 text-white hover:bg-red-500 hidden">
+                    <i class="fa-solid fa-times"></i>
+                    <span class="ml-1">Cancelar</span>
+                </button>
+                <div id="info-vertices" class="text-sm text-gray-600 ml-2 hidden">
+                    <i class="fa-solid fa-vector-square"></i>
+                    Vértices: <span id="num-vertices" class="font-bold">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" class="bg-white flex flex-col h-max max-h-[60vh] p-4 sm:h-full sm:w-2/5">
+        {% csrf_token %}
+        <div class="flex w-full flex-col mb-4 text-gray-800">
+            <span class="text-center w-full font-semibold text-lg mb-3">Registrar</span>
+
+            <!-- Toggle entre Punto y Polígono -->
+            <div class="bg-gray-50 rounded-lg border border-gray-300 p-3 mb-4">
+                <div class="text-sm font-semibold mb-2 text-gray-700">Tipo de Registro</div>
+                <div class="flex gap-2">
+                    <button type="button" id="btnModoMarcador"
+                        class="flex-1 px-3 py-2 rounded text-sm font-medium transition-colors bg-blue-600 text-white">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <span class="ml-1">Sector</span>
+                    </button>
+                    <button type="button" id="btnModoPoligono"
+                        class="flex-1 px-3 py-2 rounded text-sm font-medium transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300">
+                        <i class="fa-solid fa-draw-polygon"></i>
+                        <span class="ml-1">Nueva Zona</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Campos para Punto (Sector) -->
+            <div id="campos-punto" class="w-full">
+                <div class="flex flex-col w-full pb-4">
+                    <label class="mb-1 font-semibold" for="latitud">Latitud</label>
+                    <input name="latitud" id="latitud"
+                        class="shadow-md text-xs sm:text-sm border rounded-lg border-gray-400 p-2" type="text"
+                        placeholder="Ej: 13.309">
+                </div>
+                <div class="flex flex-col w-full pb-4">
+                    <label class="mb-1 font-semibold" for="longitud">Longitud</label>
+                    <input name="longitud" id="longitud"
+                        class="shadow-md text-xs sm:text-sm border rounded-lg border-gray-400 p-2" type="text"
+                        placeholder="Ej: -87.178">
+                </div>
+
+                <div class="flex flex-col w-full pb-4">
+                    <label class="mb-1 font-semibold" for="nombre_sector">Nombre del Sector</label>
+                    <input name="nombre_sector" id="nombre_sector"
+                        class="shadow-md text-xs sm:text-sm border rounded-lg border-gray-400 p-2" type="text"
+                        placeholder="Ej: Sector Central">
+                </div>
+
+                <!-- Zonas contenedoras (oculto, se llena automáticamente) -->
+                <input type="hidden" name="zonas_ids" id="zonas_ids">
+
+                <!-- Mostrar zonas detectadas -->
+                <div id="zonas-detectadas" class="hidden">
+                    <label class="mb-1 font-semibold text-green-600">
+                        <i class="fa-solid fa-check-circle"></i>
+                        Zonas detectadas:
+                    </label>
+                    <div id="lista-zonas" class="text-sm bg-green-50 border border-green-300 rounded p-2 mb-2"></div>
+                </div>
+            </div>
+
+            <!-- Campo para Polígono (Zona) -->
+            <div id="campos-poligono" class="w-full hidden">
+                <div class="flex flex-col w-full pb-4">
+                    <label class="mb-1 font-semibold" for="nombre">Nombre de la Zona</label>
+                    <input name="nombre" id="nombre"
+                        class="shadow-md text-xs sm:text-sm border rounded-lg border-gray-400 p-2" type="text"
+                        placeholder="Ej: Zona Norte">
+                </div>
+                <div class="flex flex-col w-full">
+                    <label class="mb-1 font-semibold" for="coordenadas">Coordenadas del Polígono</label>
+                    <textarea name="coordenadas" id="coordenadas" rows="6"
+                        class="shadow-md text-xs border rounded-lg border-gray-400 p-2 font-mono bg-gray-50"
+                        placeholder='Haz clic en "Iniciar" y dibuja en el mapa' readonly></textarea>
+                    <p class="text-xs text-gray-500 mt-2">
+                        <i class="fa-solid fa-info-circle text-blue-500"></i>
+                        Las coordenadas se generan al dibujar (mínimo 3 vértices)
+                    </p>
+                </div>
+            </div>
+
+            <!-- Campo oculto para tipo -->
+            <input type="hidden" name="tipo" id="tipo" value="punto">
+        </div>
 
         <div class="flex gap-4">
             <a href="{% url 'home' %}"
@@ -47,18 +138,20 @@
             </a>
             <button type="submit" id="btnGuardar"
                 class="text-sm shadow-xl w-1/2 items-center flex justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-500 active:bg-green-700 transition-colors mb-4">
-                <i class="fa-solid fa-thumbtack"></i>
-                <span>Guardar</span>
+                <i class="fa-solid fa-save"></i>
+                <span id="btnGuardarTexto">Guardar Sector</span>
             </button>
         </div>
     </form>
 </div>
 
 <script>
-    // Inicializar mapa centrado en Choluteca
+    // Datos de zonas desde Django
+    const zonasExistentes = {{ zonas| safe }};
+
+    // Inicializar mapa
     const map = L.map('map').setView([13.31065966, -87.17890633], 8);
 
-    // Definir las capas de tiles
     const openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap contributors'
@@ -69,14 +162,11 @@
         maxZoom: 18
     });
 
-    // Agregar la capa por defecto (esriSatellite, OpenStreetMap)
     let currentLayer = openStreetMap;
     currentLayer.addTo(map);
 
-    // Botón para cambiar capas
     document.getElementById('toggleLayer').addEventListener('click', function () {
         const layerNameSpan = document.getElementById('layerName');
-
         if (currentLayer === openStreetMap) {
             map.removeLayer(openStreetMap);
             esriSatellite.addTo(map);
@@ -90,18 +180,87 @@
         }
     });
 
-    // Marcador que se moverá
+    // Variables globales
     let marker = null;
     let actualizandoProgramaticamente = false;
+    let modoActual = 'punto';
+    let dibujandoPoligono = false;
+    let verticesPoligono = [];
+    let poligonoActual = null;
+    let marcadoresTemporales = [];
+    let polyline = null;
+    let poligonosZonas = {}; // Almacenar polígonos de zonas existentes
 
-    // Función para actualizar la ubicación
+    // Cargar y mostrar zonas existentes en el mapa
+    function cargarZonasExistentes() {
+        zonasExistentes.forEach(zona => {
+            const coords = zona.geopoligono.coordinates[0].map(c => [c[1], c[0]]);
+            const poligono = L.polygon(coords, {
+                color: '#10b981',
+                fillColor: '#10b981',
+                fillOpacity: 0.2,
+                weight: 2
+            }).addTo(map);
+
+            // Tooltip en hover, sin popup en click
+            poligono.bindTooltip(zona.nombre, {
+                permanent: false,
+                direction: 'center'
+            });
+
+            poligonosZonas[zona.id] = { poligono, nombre: zona.nombre };
+        });
+    }
+
+    cargarZonasExistentes();
+
+    // Función para verificar si un punto está dentro de un polígono
+    function detectarZonasContenedoras(lat, lng) {
+        const zonasIds = [];
+        const zonasNombres = [];
+
+        Object.keys(poligonosZonas).forEach(zonaId => {
+            const zona = poligonosZonas[zonaId];
+            const bounds = zona.poligono.getBounds();
+
+            // Verificación rápida con bounds
+            if (bounds.contains([lat, lng])) {
+                // Verificación precisa con ray-casting
+                const latlng = L.latLng(lat, lng);
+                const vertices = zona.poligono.getLatLngs()[0];
+
+                if (isPointInPolygon(latlng, vertices)) {
+                    zonasIds.push(zonaId);
+                    zonasNombres.push(zona.nombre);
+                }
+            }
+        });
+
+        return { ids: zonasIds, nombres: zonasNombres };
+    }
+
+    // Algoritmo Ray Casting para point-in-polygon
+    function isPointInPolygon(point, vertices) {
+        let inside = false;
+        for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+            const xi = vertices[i].lat, yi = vertices[i].lng;
+            const xj = vertices[j].lat, yj = vertices[j].lng;
+
+            const intersect = ((yi > point.lng) !== (yj > point.lng))
+                && (point.lat < (xj - xi) * (point.lng - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+
+    // Actualizar ubicación del marcador y detectar zonas
     function actualizarUbicacion(lat, lng, zoom = null, actualizarInputs = true) {
-        // Validar coordenadas
+        if (modoActual !== 'punto') return;
+
         if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
             return;
         }
 
-        // Actualizar inputs solo si no vienen de los inputs mismos
         if (actualizarInputs) {
             actualizandoProgramaticamente = true;
             document.getElementById('latitud').value = lat.toFixed(8);
@@ -109,36 +268,219 @@
             actualizandoProgramaticamente = false;
         }
 
-        // Si ya existe un marcador, moverlo
         if (marker) {
             marker.setLatLng([lat, lng]);
         } else {
-            // Crear nuevo marcador
             marker = L.marker([lat, lng]).addTo(map);
         }
 
-        // Centrar mapa en la ubicación
         if (zoom) {
             map.setView([lat, lng], zoom);
         } else {
             map.panTo([lat, lng]);
         }
+
+        // Detectar zonas contenedoras
+        const zonas = detectarZonasContenedoras(lat, lng);
+        const zonasDetectadasDiv = document.getElementById('zonas-detectadas');
+        const listaZonasDiv = document.getElementById('lista-zonas');
+        const zonasIdsInput = document.getElementById('zonas_ids');
+
+        if (zonas.ids.length > 0) {
+            zonasDetectadasDiv.classList.remove('hidden');
+            listaZonasDiv.innerHTML = zonas.nombres.map(n => `<div>• ${n}</div>`).join('');
+            zonasIdsInput.value = zonas.ids.join(',');
+        } else {
+            zonasDetectadasDiv.classList.add('hidden');
+            zonasIdsInput.value = '';
+        }
     }
 
-    // Crear marcador inicial en las coordenadas de Choluteca
     actualizarUbicacion(13.31065966, -87.17890633);
 
-    // Al hacer clic en el mapa
-    map.on('click', function (e) {
-        actualizarUbicacion(e.latlng.lat, e.latlng.lng);
+    // Funciones de polígono
+    function agregarVertice(lat, lng) {
+        if (!dibujandoPoligono) return;
+
+        verticesPoligono.push([lat, lng]);
+
+        const marcadorTemp = L.circleMarker([lat, lng], {
+            radius: 6,
+            fillColor: "#3b82f6",
+            color: "#fff",
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8
+        }).addTo(map);
+        marcadoresTemporales.push(marcadorTemp);
+
+        document.getElementById('num-vertices').textContent = verticesPoligono.length;
+
+        if (verticesPoligono.length >= 2) {
+            if (polyline) {
+                map.removeLayer(polyline);
+            }
+            polyline = L.polyline(verticesPoligono, {
+                color: '#3b82f6',
+                weight: 2,
+                dashArray: '5, 10'
+            }).addTo(map);
+
+            if (verticesPoligono.length >= 3) {
+                document.getElementById('btnCerrarPoligono').classList.remove('hidden');
+            }
+        }
+
+        actualizarCampoCoordenadasPoligono();
+    }
+
+    function actualizarCampoCoordenadasPoligono() {
+        const coords = verticesPoligono.map(v => ({
+            lat: parseFloat(v[0].toFixed(8)),
+            lng: parseFloat(v[1].toFixed(8))
+        }));
+        document.getElementById('coordenadas').value = JSON.stringify(coords, null, 2);
+    }
+
+    async function cerrarPoligono() {
+        if (verticesPoligono.length < 3) {
+            alert('Necesitas al menos 3 vértices para crear un polígono');
+            return;
+        }
+
+        const nombre = document.getElementById('nombre').value.trim();
+        if (!nombre) {
+            alert('Por favor ingresa un nombre para la zona');
+            return;
+        }
+
+        // Guardar zona vía AJAX
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        formData.append('tipo', 'zona');
+        formData.append('nombre', nombre);
+        formData.append('coordenadas', document.getElementById('coordenadas').value);
+
+        try {
+            const response = await fetch('', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert(data.mensaje);
+                // Recargar página para actualizar zonas
+                window.location.reload();
+            } else {
+                alert(data.mensaje);
+            }
+        } catch (error) {
+            alert('Error al guardar la zona: ' + error);
+        }
+    }
+
+    function cancelarPoligono() {
+        if (polyline) {
+            map.removeLayer(polyline);
+            polyline = null;
+        }
+        if (poligonoActual) {
+            map.removeLayer(poligonoActual);
+            poligonoActual = null;
+        }
+        marcadoresTemporales.forEach(m => map.removeLayer(m));
+        marcadoresTemporales = [];
+        verticesPoligono = [];
+
+        dibujandoPoligono = false;
+
+        document.getElementById('coordenadas').value = '';
+        document.getElementById('num-vertices').textContent = '0';
+
+        document.getElementById('btnIniciarPoligono').classList.remove('hidden');
+        document.getElementById('btnCerrarPoligono').classList.add('hidden');
+        document.getElementById('btnCancelarPoligono').classList.add('hidden');
+        document.getElementById('info-vertices').classList.add('hidden');
+    }
+
+    // Event Listeners para cambiar de modo
+    document.getElementById('btnModoMarcador').addEventListener('click', function () {
+        if (modoActual === 'punto') return;
+
+        modoActual = 'punto';
+        document.getElementById('tipo').value = 'punto';
+
+        this.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+        this.classList.add('bg-blue-600', 'text-white');
+        document.getElementById('btnModoPoligono').classList.remove('bg-blue-600', 'text-white');
+        document.getElementById('btnModoPoligono').classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+
+        document.getElementById('campos-punto').classList.remove('hidden');
+        document.getElementById('campos-poligono').classList.add('hidden');
+        document.getElementById('controles-poligono').classList.add('hidden');
+        document.getElementById('btnGuardarTexto').textContent = 'Guardar Sector';
+
+        cancelarPoligono();
+
+        if (marker) {
+            marker.addTo(map);
+        }
     });
 
-    // Actualizar mapa cuando se editan los inputs
+    document.getElementById('btnModoPoligono').addEventListener('click', function () {
+        if (modoActual === 'poligono') return;
+
+        modoActual = 'poligono';
+        document.getElementById('tipo').value = 'zona';
+
+        this.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+        this.classList.add('bg-blue-600', 'text-white');
+        document.getElementById('btnModoMarcador').classList.remove('bg-blue-600', 'text-white');
+        document.getElementById('btnModoMarcador').classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+
+        document.getElementById('campos-punto').classList.add('hidden');
+        document.getElementById('campos-poligono').classList.remove('hidden');
+        document.getElementById('controles-poligono').classList.remove('hidden');
+        document.getElementById('btnGuardarTexto').textContent = 'Guardar Zona';
+
+        if (marker) {
+            map.removeLayer(marker);
+        }
+    });
+
+    // Event Listeners controles polígono
+    document.getElementById('btnIniciarPoligono').addEventListener('click', function () {
+        dibujandoPoligono = true;
+        verticesPoligono = [];
+
+        this.classList.add('hidden');
+        document.getElementById('btnCancelarPoligono').classList.remove('hidden');
+        document.getElementById('info-vertices').classList.remove('hidden');
+        document.getElementById('num-vertices').textContent = '0';
+
+        document.getElementById('coordenadas').value = '';
+    });
+
+    document.getElementById('btnCerrarPoligono').addEventListener('click', cerrarPoligono);
+    document.getElementById('btnCancelarPoligono').addEventListener('click', cancelarPoligono);
+
+    // Click en el mapa
+    map.on('click', function (e) {
+        if (modoActual === 'punto' && !dibujandoPoligono) {
+            actualizarUbicacion(e.latlng.lat, e.latlng.lng);
+        } else if (modoActual === 'poligono' && dibujandoPoligono) {
+            agregarVertice(e.latlng.lat, e.latlng.lng);
+        }
+    });
+
+    // Inputs de latitud/longitud
     const latInput = document.getElementById('latitud');
     const lngInput = document.getElementById('longitud');
 
     function actualizarDesdeInputs() {
-        if (actualizandoProgramaticamente) return;
+        if (actualizandoProgramaticamente || modoActual !== 'punto') return;
 
         const lat = parseFloat(latInput.value);
         const lng = parseFloat(lngInput.value);
@@ -148,12 +490,11 @@
         }
     }
 
-    // Escuchar cambios en tiempo real
     latInput.addEventListener('input', actualizarDesdeInputs);
     lngInput.addEventListener('input', actualizarDesdeInputs);
 
-    // También actualizar al perder el foco (blur) para centrar el mapa
     latInput.addEventListener('blur', function () {
+        if (modoActual !== 'punto') return;
         const lat = parseFloat(latInput.value);
         const lng = parseFloat(lngInput.value);
         if (!isNaN(lat) && !isNaN(lng)) {
@@ -162,6 +503,7 @@
     });
 
     lngInput.addEventListener('blur', function () {
+        if (modoActual !== 'punto') return;
         const lat = parseFloat(latInput.value);
         const lng = parseFloat(lngInput.value);
         if (!isNaN(lat) && !isNaN(lng)) {
@@ -169,12 +511,12 @@
         }
     });
 
-    // Botón de ubicación actual
+    // Botón ubicación
     document.getElementById('btnUbicacion').addEventListener('click', function () {
         const btn = this;
         const originalHTML = btn.innerHTML;
 
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Obteniendo ubicación...';
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Obteniendo...';
         btn.disabled = true;
 
         if ("geolocation" in navigator) {
@@ -183,7 +525,11 @@
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
 
-                    actualizarUbicacion(lat, lng, 18);
+                    if (modoActual === 'punto') {
+                        actualizarUbicacion(lat, lng, 18);
+                    } else {
+                        map.setView([lat, lng], 18);
+                    }
 
                     btn.innerHTML = originalHTML;
                     btn.disabled = false;
@@ -192,16 +538,16 @@
                     let mensaje = '';
                     switch (error.code) {
                         case error.PERMISSION_DENIED:
-                            mensaje = "Permiso de ubicación denegado. Por favor, habilita el acceso a tu ubicación.";
+                            mensaje = "Permiso de ubicación denegado.";
                             break;
                         case error.POSITION_UNAVAILABLE:
                             mensaje = "Información de ubicación no disponible.";
                             break;
                         case error.TIMEOUT:
-                            mensaje = "Tiempo de espera agotado al obtener ubicación.";
+                            mensaje = "Tiempo de espera agotado.";
                             break;
                         default:
-                            mensaje = "Error desconocido al obtener ubicación.";
+                            mensaje = "Error al obtener ubicación.";
                     }
                     alert(mensaje);
 
@@ -218,6 +564,24 @@
             alert("Tu navegador no soporta geolocalización");
             btn.innerHTML = originalHTML;
             btn.disabled = false;
+        }
+    });
+
+    // Validación formulario
+    document.querySelector('form').addEventListener('submit', function (e) {
+        if (modoActual === 'poligono') {
+            // Ya no se envía por form, se usa AJAX
+            e.preventDefault();
+            alert('Usa el botón "Cerrar Polígono" para guardar la zona');
+            return false;
+        } else {
+            const lat = parseFloat(document.getElementById('latitud').value);
+            const lng = parseFloat(document.getElementById('longitud').value);
+            if (isNaN(lat) || isNaN(lng)) {
+                e.preventDefault();
+                alert('Debes ingresar coordenadas válidas');
+                return false;
+            }
         }
     });
 </script>

@@ -1,26 +1,46 @@
 {% extends "base.html" %}
 {% block content %}
 
-
 <div class="size-full flex-1 overflow-auto">
 
     <section
         class="mx-4 mt-4 flex items-center justify-center p-4 border bg-white border-gray-300 rounded-lg shadow-sm text-lg font-semibold">
-        <p>Información del Sector {{ sector.id }}</p>
+        <p>Información del {{ sector.nombre_sector }}</p>
     </section>
 
     {# Mapa y Métricas #}
     <section class="flex gap-4 m-4 flex-col sm:flex-row">
 
         <article class="flex flex-col p-4 border bg-white border-gray-300 rounded-lg shadow-sm relative sm:w-1/2">
-            <h2 class="text-lg font-semibold w-full text-center">Ubicación</h2>
+            {# <h2 class="text-lg font-semibold w-full text-center">Ubicación</h2> #}
             <div class="flex flex-col text-sm mb-4 gap-1">
                 <p class="text-gray-700"><b>Latitud:</b> {{ sector.latitud }} </p>
                 <p class="text-gray-700"><b>Longitud:</b> {{ sector.longitud }} </p>
+
+                {% if sector.zonas.exists %}
+                <div class="mt-2 pt-2 border-t border-gray-200">
+                    <p class="text-gray-700 font-semibold mb-1">
+                        <i class="fa-solid fa-map-location-dot text-green-600"></i>
+                        Zonas:
+                    </p>
+                    <div class="flex flex-wrap gap-1">
+                        {% for zona in sector.zonas.all %}
+                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
+                            {{ zona.nombre }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-xs mt-2 italic">
+                    <i class="fa-solid fa-info-circle"></i>
+                    Sin zonas asignadas
+                </p>
+                {% endif %}
             </div>
             <div id="map" class="w-full h-64 sm:flex-1 rounded-lg"></div>
             <button id="toggleLayer"
-                class="absolute top-28 right-6 z-1000 bg-white hover:bg-gray-100 px-3 py-2 rounded-lg shadow-md border border-gray-300 text-sm font-medium transition-colors">
+                class="absolute bottom-6 left-6 z-1000 bg-white hover:bg-gray-100 px-3 py-2 rounded-lg shadow-md border border-gray-300 text-sm font-medium transition-colors">
                 <i class="fa-solid fa-layer-group"></i>
                 <span id="layerName">Satélite</span>
             </button>
@@ -64,14 +84,25 @@
                     </div>
                 </article>
             </div>
-            <article
-                class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
-                <i class="fa-solid fa-flask text-rose-300 fa-2x"></i>
-                <div class="flex flex-col align-items-center">
-                    <span class="text-xl font-bold">32</span>
-                    <h3 class="text-sm">Salinidad</h3>
-                </div>
-            </article>
+            <div class="flex gap-4">
+                <article
+                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                    <i class="fa-solid fa-flask text-rose-300 fa-2x"></i>
+                    <div class="flex flex-col align-items-center">
+                        <span class="text-xl font-bold">32</span>
+                        <h3 class="text-sm">Salinidad</h3>
+                    </div>
+                </article>
+                <article
+                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                    <i class="fa-solid fa-lungs text-cyan-600 fa-2x"></i>
+                    <div class="flex flex-col align-items-center">
+                        <span class="text-xl font-bold">32</span>
+                        <h3 class="text-sm">Oxígeno</h3>
+                    </div>
+                </article>
+            </div>
+
             <article
                 class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
                 <i class="fa-solid fa-check-circle text-green-600 fa-2x"></i>
@@ -150,12 +181,22 @@
         </div>
     </section>
 
-
 </div>
 
 <script>
     const lat = {{ sector.latitud }};
     const lng = {{ sector.longitud }};
+
+    // Zonas del sector desde Django
+    const zonasDelSector = [
+        {% for zona in sector.zonas.all %}
+    {
+        id: {{ zona.id }},
+        nombre: "{{ zona.nombre|escapejs }}",
+            geopoligono: {{ zona.geopoligono | safe }}
+    } {% if not forloop.last %}, {% endif %}
+    {% endfor %}
+    ];
 
     const map = L.map('map', {
         center: [lat, lng],
@@ -169,7 +210,7 @@
         zoomControl: true
     });
 
-    // Definir las capas de tiles
+    // Capas de tiles
     const openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap contributors'
@@ -180,11 +221,9 @@
         maxZoom: 18
     });
 
-    // Agregar la capa por defecto
     let currentLayer = openStreetMap;
     currentLayer.addTo(map);
 
-    // Botón para cambiar capas
     document.getElementById('toggleLayer').addEventListener('click', function () {
         const layerNameSpan = document.getElementById('layerName');
 
@@ -201,23 +240,55 @@
         }
     });
 
-    // Marcador fijo
+    // Dibujar zonas en el mapa
+    zonasDelSector.forEach(zona => {
+        const coords = zona.geopoligono.coordinates[0].map(c => [c[1], c[0]]);
+        const poligono = L.polygon(coords, {
+            color: '#10b981',
+            fillColor: '#10b981',
+            fillOpacity: 0.25,
+            weight: 2
+        }).addTo(map);
+
+        // Tooltip al pasar el mouse
+        poligono.bindTooltip(zona.nombre, {
+            permanent: false,
+            direction: 'center',
+            opacity: 0.9
+        });
+    });
+
+    // Marcador del sector
     const marker = L.marker([lat, lng], {
         draggable: false
     }).addTo(map);
 
     marker.bindPopup(`
-    <div class="text-center text-xs">
-        <strong>Sector {{ sector.id }}</strong><br>
-        <span>Lat: ${lat}</span><br>
-        <span>Lng: ${lng}</span>
-    </div>
-`, {
-        // closeOnClick: false,     // No se cierra al hacer clic en el mapa
-        // autoClose: false,        // No se cierra cuando se abre otro popup
-        // closeButton: false       // Opcional: quita el botón X de cerrar
-    });
-    // }).openPopup();
+        <div class="text-center text-xs">
+            <strong>Sector {{ sector.id }}</strong><br>
+            <span>Lat: ${lat}</span><br>
+            <span>Lng: ${lng}</span>
+            ${zonasDelSector.length > 0 ? `
+                <div class="mt-2 pt-2 border-t border-gray-200">
+                    <div class="text-left">
+                        <strong class="text-green-600">Zonas:</strong><br>
+                        ${zonasDelSector.map(z => `<span class="text-xs">• ${z.nombre}</span>`).join('<br>')}
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `);
+
+    // Ajustar vista del mapa para incluir zonas si existen
+    if (zonasDelSector.length > 0) {
+        const bounds = L.latLngBounds([[lat, lng]]);
+        zonasDelSector.forEach(zona => {
+            zona.geopoligono.coordinates[0].forEach(c => {
+                bounds.extend([c[1], c[0]]);
+            });
+        });
+        map.fitBounds(bounds, { padding: [50, 50] });
+    }
 </script>
 
 {% endblock %}

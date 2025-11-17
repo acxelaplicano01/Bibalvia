@@ -13,6 +13,11 @@ class Sector(models.Model):
         validators=[MinValueValidator(-180), MaxValueValidator(180)]
     )
     
+    nombre_sector= models.CharField(max_length=100, unique=True, null=True, blank=True)
+    
+
+    zonas = models.ManyToManyField('Zona', related_name='sectores')
+    
     class Meta:
         verbose_name = "Sector"
         verbose_name_plural = "Sectores"
@@ -185,3 +190,10 @@ class HistorialClasificacion(models.Model):
     
     def __str__(self):
         return f"{self.bivalvo.tipo} en {self.sector} - {self.marca_tiempo}"
+
+class Zona(models.Model):
+    nombre = models.CharField(max_length=100, unique=True)
+    geopoligono = models.JSONField()  # GeoJSON del polígono
+
+    def __str__(self):
+        return self.nombre
