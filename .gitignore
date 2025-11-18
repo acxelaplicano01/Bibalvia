@@ -1,2 +1,6 @@
 node_modules/
 .env
+# Archivos compilados de Python
+*.pyc
+*.pyo
+__pycache__/
