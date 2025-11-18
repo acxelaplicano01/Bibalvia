@@ -156,7 +156,7 @@
                         </label>
 
                         <!-- GRID DE IMÁGENES -->
-                        <div id="previewGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
+                        <div id="previewGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4 overflow-auto">
                             {% for img in imagenes %}
                             <div class="relative group">
                                 <img src="{{ MEDIA_URL }}sectores/{{ img }}"
@@ -170,9 +170,7 @@
                             </div>
                             {% endfor %}
                         </div>
-
                     </div>
-
                 </div>
             </div>
         </div>
