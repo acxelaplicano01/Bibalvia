@@ -382,6 +382,9 @@
   .max-h-80 {
     max-height: calc(var(--spacing) * 80);
   }
+  .max-h-\[50vh\] {
+    max-height: 50vh;
+  }
   .max-h-\[60vh\] {
     max-height: 60vh;
   }
@@ -964,6 +967,21 @@
       height: 100%;
     }
   }
+  .sm\:max-h-\[60vh\] {
+    @media (width >= 40rem) {
+      max-height: 60vh;
+    }
+  }
+  .sm\:max-h-full {
+    @media (width >= 40rem) {
+      max-height: 100%;
+    }
+  }
+  .sm\:max-h-screen {
+    @media (width >= 40rem) {
+      max-height: 100vh;
+    }
+  }
   .sm\:w-1\/2 {
     @media (width >= 40rem) {
       width: calc(1/2 * 100%);
@@ -987,6 +1005,11 @@
   .sm\:flex-row {
     @media (width >= 40rem) {
       flex-direction: row;
+    }
+  }
+  .sm\:overflow-auto {
+    @media (width >= 40rem) {
+      overflow: auto;
     }
   }
   .sm\:overflow-hidden {

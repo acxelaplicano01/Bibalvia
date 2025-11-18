@@ -65,6 +65,31 @@ class HistorialTemperatura(models.Model):
     
     def __str__(self):
         return f"{self.valor}°C - {self.marca_tiempo}"
+    
+
+class HistorialOxigeno(models.Model):
+    sector = models.ForeignKey(
+        Sector, 
+        on_delete=models.CASCADE,
+        related_name='oxigenos'  # ← IMPORTANTE
+    )
+    valor = models.DecimalField(
+        max_digits=5, 
+        decimal_places=2,
+        validators=[MinValueValidator(-50), MaxValueValidator(100)]
+    )
+    marca_tiempo = models.DateTimeField(db_index=True)  # ← Para búsquedas por fecha
+    
+    class Meta:
+        verbose_name = "Historial de Oxígeno"
+        verbose_name_plural = "Historiales de Oxígeno"
+        ordering = ['-marca_tiempo']  # Más recientes primero
+        indexes = [
+            models.Index(fields=['sector', '-marca_tiempo']),
+        ]
+    
+    def __str__(self):
+        return f"{self.valor}°C - {self.marca_tiempo}"
 
 
 class HistorialSalinidad(models.Model):

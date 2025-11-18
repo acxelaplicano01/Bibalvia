@@ -49,14 +49,13 @@
         </div>
     </div>
 
-    <form method="POST" class="bg-white flex flex-col h-max max-h-[60vh] p-4 sm:h-full sm:w-2/5">
+    <form method="POST" class="bg-white flex flex-col h-max p-4 max-h-[50vh] sm:max-h-full sm:h-full sm:w-2/5 sm:overflow-auto">
         {% csrf_token %}
         <div class="flex w-full flex-col mb-4 text-gray-800">
             <span class="text-center w-full font-semibold text-lg mb-3">Registrar</span>
 
             <!-- Toggle entre Punto y Polígono -->
             <div class="bg-gray-50 rounded-lg border border-gray-300 p-3 mb-4">
-                <div class="text-sm font-semibold mb-2 text-gray-700">Tipo de Registro</div>
                 <div class="flex gap-2">
                     <button type="button" id="btnModoMarcador"
                         class="flex-1 px-3 py-2 rounded text-sm font-medium transition-colors bg-blue-600 text-white">
@@ -66,7 +65,7 @@
                     <button type="button" id="btnModoPoligono"
                         class="flex-1 px-3 py-2 rounded text-sm font-medium transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300">
                         <i class="fa-solid fa-draw-polygon"></i>
-                        <span class="ml-1">Nueva Zona</span>
+                        <span class="ml-1">Zona</span>
                     </button>
                 </div>
             </div>
@@ -131,7 +130,7 @@
         </div>
 
         <div class="flex gap-4">
-            <a href="{% url 'home' %}"
+            <a href="{% url 'home' %}" id="btnCancelarSector"
                 class="text-sm shadow-xl w-1/2 items-center flex justify-center gap-2 bg-red-800 text-white px-4 py-2 rounded-lg hover:bg-red-700 active:bg-red-900 transition-colors mb-4">
                 <i class="fa-solid fa-ban"></i>
                 <span>Cancelar</span>
@@ -421,7 +420,8 @@
         document.getElementById('campos-poligono').classList.add('hidden');
         document.getElementById('controles-poligono').classList.add('hidden');
         document.getElementById('btnGuardarTexto').textContent = 'Guardar Sector';
-
+        document.getElementById('btnGuardar').classList.remove('hidden');
+        document.getElementById('btnCancelarSector').classList.remove('w-full');
         cancelarPoligono();
 
         if (marker) {
@@ -444,6 +444,9 @@
         document.getElementById('campos-poligono').classList.remove('hidden');
         document.getElementById('controles-poligono').classList.remove('hidden');
         document.getElementById('btnGuardarTexto').textContent = 'Guardar Zona';
+        document.getElementById('btnGuardar').classList.add('hidden');
+        document.getElementById('btnCancelarSector').classList.add('w-full');
+
 
         if (marker) {
             map.removeLayer(marker);
