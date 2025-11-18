@@ -22,8 +22,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # SECRET_KEY = 'django-insecure-b(ln^@u5r6jr*7egc)ckoo#2(pem=_h!ki_24d%ic6%1#)fld4'
@@ -96,7 +94,8 @@ WSGI_APPLICATION = 'bivalvia.wsgi.application'
 # Base de datos
 DATABASES = {
     'default': dj_database_url.config(
-        default=config('DATABASE_URL', default='sqlite:///db.sqlite3')
+        default=config('DATABASE_URL', default='sqlite:///db.sqlite3'),
+        conn_max_age=600,  # Mantener conexiones abiertas para rendimiento
     )
 }
 
