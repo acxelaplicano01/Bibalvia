@@ -1,9 +1,15 @@
+import os
+import json
+import re
+from django.conf import settings
 from django.shortcuts import render, redirect
-from dashboard.models import Sector, Bivalvo, Zona
-from django.contrib import messages
+from dashboard.models import Sector, Zona
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
-import json
+from django.views.decorators.csrf import csrf_exempt
+from django.core.files.storage import FileSystemStorage
+
+
 
 def home(request):
     sectores = Sector.objects.all()
@@ -22,10 +28,36 @@ def home(request):
 
 def sector_detail(request, id):
     sector = Sector.objects.get(id=id)
+
+    carpeta = os.path.join(settings.MEDIA_ROOT, 'sectores')
+    imagenes = []
+    siguiente_num = 1   # contador por defecto
+
+    if os.path.exists(carpeta):
+        imagenes = [
+            img for img in os.listdir(carpeta)
+            if f'sector{id}' in img
+        ]
+
+        # Buscar el número más alto de imagenX
+        numeros = []
+        for img in imagenes:
+            # CORREGIDO: buscar sector{id}-imagen{num}
+            match = re.search(rf'sector{id}-imagen(\d+)', img)
+            if match:
+                numeros.append(int(match.group(1)))
+        
+        if numeros:
+            siguiente_num = max(numeros) + 1
+
     context = {
         'sector': sector,
+        'imagenes': imagenes,
+        'MEDIA_URL': settings.MEDIA_URL,
+        'siguiente_num': siguiente_num
     }
     return render(request, 'dashboard/sector_detail.html', context)
+
 
 def sector_create(request):
     if request.method == 'POST':
@@ -103,3 +135,30 @@ def sector_create(request):
         'zonas': list(zonas.values('id', 'nombre', 'geopoligono'))
     }
     return render(request, 'dashboard/sector_create.html', context)
+
+
+
+@csrf_exempt
+def upload_imagen_sector(request):
+    if request.method == 'POST':
+        imagen = request.FILES['imagen']
+        sector_id = request.POST.get('sector_id')
+
+        fs = FileSystemStorage(location='media/sectores/')
+        filename = fs.save(imagen.name, imagen)
+
+        return JsonResponse({'ok': True, 'filename': filename})
+    
+@csrf_exempt
+def borrar_imagen_sector(request):
+    if request.method == 'POST':
+        import json
+        data = json.loads(request.body)
+        nombre = data.get('nombre')
+
+        path = os.path.join(settings.MEDIA_ROOT, 'sectores', nombre)
+        if os.path.exists(path):
+            os.remove(path)
+            return JsonResponse({'ok': True})
+
+    return JsonResponse({'ok': False})
