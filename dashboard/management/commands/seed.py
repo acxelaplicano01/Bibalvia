@@ -11,6 +11,7 @@ from dashboard.models import (
     HistorialPh,
     HistorialHumedad,
     HistorialTurbidez,
+    HistorialOxigeno,
     HistorialClasificacion,
     Zona
 )
@@ -32,8 +33,10 @@ class Command(BaseCommand):
             HistorialHumedad.objects.all().delete()
             HistorialPh.objects.all().delete()
             HistorialTurbidez.objects.all().delete()
+            HistorialOxigeno.objects.all().delete()
             Bivalvo.objects.all().delete()
             Sector.objects.all().delete()
+            
             
             # Resetear secuencias de autoincremento
             with connection.cursor() as cursor:
@@ -45,7 +48,9 @@ class Command(BaseCommand):
                     'dashboard_historialph',
                     'dashboard_historialhumedad',
                     'dashboard_historialturbidez',
-                    'dashboard_historialclasificacion'
+                    'dashboard_historialoxigeno',
+                    'dashboard_historialclasificacion',
+                    'dashboard_zona',
                 ]
                 for tabla in tablas:
                     cursor.execute(f"DELETE FROM sqlite_sequence WHERE name='{tabla}'")
