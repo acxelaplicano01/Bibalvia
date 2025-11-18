@@ -276,9 +276,9 @@
     const zonasDelSector = [
         {% for zona in sector.zonas.all %}
     {
-        id: { { zona.id } },
+        id: {{ zona.id }},
         nombre: "{{ zona.nombre|escapejs }}",
-            geopoligono: { { zona.geopoligono | safe } }
+            geopoligono: {{ zona.geopoligono | safe }}
     } {% if not forloop.last %}, {% endif %}
     {% endfor %}
     ];
