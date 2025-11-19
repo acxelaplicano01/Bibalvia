@@ -79,6 +79,9 @@ TEMPLATES = [
         },
     },
 ]
+TEMPLATES[0]['OPTIONS']['context_processors'] += [
+    'dashboard.context_processors.environment',
+]
 
 WSGI_APPLICATION = 'bivalvia.wsgi.application'
 
