@@ -8,9 +8,9 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import FileSystemStorage
+from django.contrib.auth.decorators import login_required
 
-
-
+@login_required
 def home(request):
     sectores = Sector.objects.all()
     context = {
@@ -26,6 +26,7 @@ def home(request):
     
     return render(request, 'dashboard/home.html', context)
 
+@login_required
 def sector_detail(request, id):
     sector = Sector.objects.get(id=id)
 
@@ -58,7 +59,7 @@ def sector_detail(request, id):
     }
     return render(request, 'dashboard/sector_detail.html', context)
 
-
+@login_required
 def sector_create(request):
     if request.method == 'POST':
         tipo = request.POST.get('tipo')
@@ -137,7 +138,7 @@ def sector_create(request):
     return render(request, 'dashboard/sector_create.html', context)
 
 
-
+@login_required
 @csrf_exempt
 def upload_imagen_sector(request):
     if request.method == 'POST':
@@ -148,7 +149,8 @@ def upload_imagen_sector(request):
         filename = fs.save(imagen.name, imagen)
 
         return JsonResponse({'ok': True, 'filename': filename})
-    
+
+@login_required  
 @csrf_exempt
 def borrar_imagen_sector(request):
     if request.method == 'POST':
