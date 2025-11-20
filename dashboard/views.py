@@ -14,7 +14,7 @@ from django.core.files.storage import FileSystemStorage
 from django.contrib.auth.decorators import login_required
 
 # Configuración serial
-SERIAL_PORT = 'COM3'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
+SERIAL_PORT = '/dev/ttyACM0'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
 BAUD_RATE = 9600
 TIMEOUT = 3
 
