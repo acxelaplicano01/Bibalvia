@@ -16,7 +16,7 @@ from django.contrib.auth.decorators import login_required
 # Configuración serial
 SERIAL_PORT = 'COM3'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
 BAUD_RATE = 9600
-TIMEOUT = 2
+TIMEOUT = 3
 
 lectura_activa = False
 conexion_serial = None
@@ -182,7 +182,7 @@ def conectar_arduino():
     try:
         if conexion_serial is None or not conexion_serial.is_open:
             conexion_serial = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=TIMEOUT)
-            time.sleep(2)
+            time.sleep(5)
         return True
     except serial.SerialException as e:
         print(f"Error conectando Arduino: {e}")
@@ -217,7 +217,7 @@ def iniciar_lectura_sensores(request):
     
     if not conectar_arduino():
         return JsonResponse({
-            'error': 'No se pudo conectar con Arduino en COM3'
+            'error': 'No se pudo conectar con Arduino en el puerto serial.'
         }, status=500)
     
     return JsonResponse({'status': 'iniciado'})
@@ -246,7 +246,7 @@ def stream_sensores(request):
             else:
                 yield f"data: {json.dumps({'error': 'Sin datos'})}\n\n"
             
-            time.sleep(2)
+            time.sleep(5)
         
         yield "data: {\"status\": \"cerrado\"}\n\n"
     

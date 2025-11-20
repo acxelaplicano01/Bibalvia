@@ -3,6 +3,8 @@
 <div class="h-full flex flex-col p-4 overflow-hidden">
     <section class="flex justify-between shrink-0 mb-4 border border-gray-300 p-4 bg-white rounded-lg items-center">
         <span class="font-semibold text-lg">Sectores</span>
+
+        {% if IS_LOCAL %}
         <a href="{% url 'sector_create' %}">
             <button
                 class="shadow-md shadow-gray-400 rounded-xl text-sm flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-500 active:bg-blue-700 px-3 py-2 transition-transform active:scale-95">
@@ -10,6 +12,7 @@
                 Añadir
             </button>
         </a>
+        {% endif %}
     </section>
 
     {% if sectores %}
