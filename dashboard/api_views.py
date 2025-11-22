@@ -19,6 +19,30 @@ def recibir_lectura(request):
     
     # Validar API Key
     api_key = request.headers.get('X-API-Key')
+    
+    
+    # DEBUG (TEMPORAL - QUITAR EN PRODUCCIÓN)
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.error(f"API Key recibida: [{api_key}]")
+    logger.error(f"API Key esperada: [{settings.CLOUD_API_KEY}]")
+    logger.error(f"Longitud recibida: {len(api_key) if api_key else 0}")
+    logger.error(f"Longitud esperada: {len(settings.CLOUD_API_KEY)}")
+    logger.error(f"Son iguales: {api_key == settings.CLOUD_API_KEY}")
+    
+    if api_key != settings.CLOUD_API_KEY:
+        return Response(
+            {
+                'error': 'API Key inválida',
+                'debug': {  # TEMPORAL
+                    'recibida_length': len(api_key) if api_key else 0,
+                    'esperada_length': len(settings.CLOUD_API_KEY)
+                }
+            },
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+    
+    
     if api_key != settings.CLOUD_API_KEY:
         return Response(
             {'error': 'API Key inválida'},

@@ -5,8 +5,14 @@ from decouple import config
 CLOUD_API_URL = config('CLOUD_API_URL')
 CLOUD_API_KEY = config('CLOUD_API_KEY')
 
+# DEBUG: Ver qué está leyendo
+print(f"URL: {CLOUD_API_URL}")
+print(f"API Key (primeros 10 chars): {CLOUD_API_KEY[:10]}...")
+print(f"API Key (longitud): {len(CLOUD_API_KEY)}")
+print("---")
+
 payload = {
-    'sector_id': 1,  # Cambia por un sector que exista en la nube
+    'sector_id': 1,
     'temperatura': 24.5,
     'salinidad': None,
     'ph': 7.2,
