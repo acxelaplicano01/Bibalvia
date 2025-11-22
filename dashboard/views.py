@@ -9,7 +9,7 @@ from django.views.decorators.http import require_http_methods
 from django.conf import settings
 from django.shortcuts import render, redirect
 from dashboard.models import Sector, Zona
-from django.views.decorators.http import require_POST
+from django.contrib import messages
 from django.core.files.storage import FileSystemStorage
 from django.contrib.auth.decorators import login_required
 
@@ -130,16 +130,17 @@ def sector_create(request):
                         nombre_sector=nombre_sector if nombre_sector else None
                     )
                     
-                    # Asociar zonas si existen
                     if zonas_ids:
                         zona_ids_list = [int(id) for id in zonas_ids.split(',') if id]
                         sector.zonas.set(zona_ids_list)
                     
-                    return redirect(f'/?toast=Sector creado exitosamente en ({latitud}, {longitud})&toast_tipo=success')
+                    # Usar messages en lugar de query params
+                    messages.success(request, f'Sector creado exitosamente en ({latitud}, {longitud})')
+                    return redirect('home')  # Sin parámetros
+                    
                 except ValueError:
-                    return redirect('/?toast=Coordenadas inválidas&toast_tipo=error')
-            else:
-                return redirect('/?toast=Por favor selecciona una ubicación en el mapa&toast_tipo=error')
+                    messages.error(request, 'Coordenadas inválidas')
+                    return redirect('home')
     
     # GET: Cargar todas las zonas
     zonas = Zona.objects.all()

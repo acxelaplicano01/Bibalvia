@@ -18,13 +18,15 @@
     {% if sectores %}
     <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-auto">
         {% for sector in sectores %}
-        <article class="border border-gray-300 rounded-lg p-4 shadow-sm h-fit flex justify-between items-start bg-white">
+        <article
+            class="border border-gray-300 rounded-lg p-4 shadow-sm h-fit flex justify-between items-start bg-white">
             <div class="flex flex-col">
                 <h2 class="text-lg font-semibold mb-2">{{ sector.nombre_sector }}</h2>
                 <p class="text-sm text-gray-600 mb-1">Latitud: {{ sector.latitud }}</p>
                 <p class="text-sm text-gray-600">Longitud: {{ sector.longitud }}</p>
             </div>
-            <a href="{% url 'sector_detail' sector.id %}" class="p-0.5 flex gap-2 text-blue-600 items-center transition-transform active:scale-95 hover:scale-105 ">
+            <a href="{% url 'sector_detail' sector.id %}"
+                class="p-0.5 flex gap-2 text-blue-600 items-center transition-transform active:scale-95 hover:scale-105 ">
                 <i class="fa-solid fa-arrow-up-right-from-square"></i>
                 Detalles
             </a>
@@ -41,12 +43,13 @@
     {% endif %}
 </div>
 
-{% if toast %}
+<!-- En tu template base.html -->
+{% if messages %}
+{% for message in messages %}
 <script>
-    sessionStorage.setItem('toast_mensaje', '{{ toast|escapejs }}');
-    sessionStorage.setItem('toast_tipo', '{{ toast_tipo }}');
-    // Limpiar URL sin recargar la página
-    window.history.replaceState({}, document.title, window.location.pathname);
+    sessionStorage.setItem('toast_mensaje', '{{ message|escapejs }}');
+    sessionStorage.setItem('toast_tipo', '{{ message.tags }}');
 </script>
+{% endfor %}
 {% endif %}
 {% endblock %}
