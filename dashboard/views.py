@@ -3,6 +3,8 @@ import json
 import re
 import serial
 import time
+import requests
+from django.utils import timezone
 from django.http import JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -39,11 +41,18 @@ def home(request):
 
 @login_required
 def sector_detail(request, id):
-    sector = Sector.objects.get(id=id)
+    sector = Sector.objects.prefetch_related('zonas').get(id=id)
+
+    # Obtener últimas lecturas
+    ultima_temperatura = sector.temperaturas.order_by('-marca_tiempo').first()
+    ultima_salinidad = sector.salinidades.order_by('-marca_tiempo').first()
+    ultima_ph = sector.ph_registros.order_by('-marca_tiempo').first()
+    ultima_turbidez = sector.turbideces.order_by('-marca_tiempo').first()
+    ultima_humedad = sector.humedades.order_by('-marca_tiempo').first()
 
     carpeta = os.path.join(settings.MEDIA_ROOT, 'sectores')
     imagenes = []
-    siguiente_num = 1   # contador por defecto
+    siguiente_num = 1
 
     if os.path.exists(carpeta):
         imagenes = [
@@ -51,10 +60,8 @@ def sector_detail(request, id):
             if f'sector{id}' in img
         ]
 
-        # Buscar el número más alto de imagenX
         numeros = []
         for img in imagenes:
-            # CORREGIDO: buscar sector{id}-imagen{num}
             match = re.search(rf'sector{id}-imagen(\d+)', img)
             if match:
                 numeros.append(int(match.group(1)))
@@ -66,7 +73,13 @@ def sector_detail(request, id):
         'sector': sector,
         'imagenes': imagenes,
         'MEDIA_URL': settings.MEDIA_URL,
-        'siguiente_num': siguiente_num
+        'siguiente_num': siguiente_num,
+        # Datos de sensores
+        'ultima_temperatura': ultima_temperatura,
+        'ultima_salinidad': ultima_salinidad,
+        'ultima_ph': ultima_ph,
+        'ultima_turbidez': ultima_turbidez,
+        'ultima_humedad': ultima_humedad,
     }
     return render(request, 'dashboard/sector_detail.html', context)
 
@@ -155,7 +168,7 @@ def sector_create(request):
 def upload_imagen_sector(request):
     if request.method == 'POST':
         imagen = request.FILES['imagen']
-        sector_id = request.POST.get('sector_id')
+        # sector_id = request.POST.get('sector_id')
 
         fs = FileSystemStorage(location='media/sectores/')
         filename = fs.save(imagen.name, imagen)
@@ -239,11 +252,19 @@ def stream_sensores(request):
     def event_stream():
         global lectura_activa
         
+        # Obtener el sector_id del request (debes pasarlo desde el frontend)
+        sector_id = request.GET.get('sector_id')
+        
         while lectura_activa:
             datos = leer_datos_arduino()
             
             if datos:
+                # Enviar al frontend
                 yield f"data: {json.dumps(datos)}\n\n"
+                
+                # Si estamos en LOCAL, enviar a la nube
+                if settings.IS_LOCAL and sector_id:
+                    enviar_a_nube(datos, sector_id)
             else:
                 yield f"data: {json.dumps({'error': 'Sin datos'})}\n\n"
             
@@ -255,3 +276,47 @@ def stream_sensores(request):
     response['Cache-Control'] = 'no-cache'
     response['X-Accel-Buffering'] = 'no'
     return response
+
+
+def enviar_a_nube(datos, sector_id):
+    """Envía datos a la instancia en la nube"""
+    if not settings.CLOUD_API_URL or not settings.CLOUD_API_KEY:
+        print("⚠️ No hay configuración de nube")
+        return False
+    
+    try:
+        payload = {
+            'sector_id': int(sector_id),
+            'temperatura': float(datos.get('temperatura')) if datos.get('temperatura') is not None else None,
+            'salinidad': None,  # Si tienes sensor de salinidad, agrégalo
+            'ph': float(datos.get('ph')) if datos.get('ph') is not None else None,
+            'turbidez': float(datos.get('turbidez')) if datos.get('turbidez') is not None else None,
+            'humedad': float(datos.get('humedad')) if datos.get('humedad') is not None else None,
+            'marca_tiempo': timezone.now().isoformat()
+        }
+        
+        headers = {
+            'X-API-Key': settings.CLOUD_API_KEY,
+            'Content-Type': 'application/json'
+        }
+        
+        response = requests.post(
+            f"{settings.CLOUD_API_URL}/lectura/",
+            json=payload,
+            headers=headers,
+            timeout=5
+        )
+        
+        if response.status_code == 201:
+            print(f"✓ Datos enviados a la nube: T={datos.get('temperatura')}°C")
+            return True
+        else:
+            print(f"✗ Error al enviar a nube: {response.status_code} - {response.text}")
+            return False
+            
+    except requests.exceptions.RequestException as e:
+        print(f"✗ Error de conexión con la nube: {e}")
+        return False
+    except Exception as e:
+        print(f"✗ Error inesperado: {e}")
+        return False

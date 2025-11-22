@@ -15,7 +15,7 @@ db.sqlite3-journal
 /media/
 
 # Variables de entorno
-# .env
+.env
 .env.local
 .env.cloud
 

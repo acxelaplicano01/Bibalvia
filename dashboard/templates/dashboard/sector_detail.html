@@ -5,7 +5,7 @@
 
     <section
         class="mx-4 mt-4 flex items-center justify-center p-4 border bg-white border-gray-300 rounded-lg shadow-sm text-lg font-semibold">
-        <p>Información del {{ sector.nombre_sector }}</p>
+        <p>Datos del sector: {{ sector.nombre_sector }}</p>
     </section>
 
     {# Mapa y Métricas #}
@@ -422,7 +422,7 @@
                         return;
                     }
 
-                    eventSource = new EventSource("{% url 'stream_sensores' %}");
+                    eventSource = new EventSource("{% url 'stream_sensores' %}?sector_id={{ sector.id }}");
 
                     eventSource.onmessage = function (event) {
                         const datos = JSON.parse(event.data);

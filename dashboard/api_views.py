@@ -2,7 +2,6 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
-from django.utils import timezone
 from dashboard.models import Sector, HistorialTemperatura, HistorialSalinidad, HistorialPh, HistorialTurbidez, HistorialHumedad
 from dashboard.serializers import LecturaSerializer
 
@@ -36,36 +35,47 @@ def recibir_lectura(request):
     try:
         sector = Sector.objects.get(id=data['sector_id'])
         
-        # Guardar cada lectura
-        HistorialTemperatura.objects.create(
-            sector=sector,
-            valor=data['temperatura'],
-            marca_tiempo=data['marca_tiempo']
-        )
+        marca_tiempo = data['marca_tiempo']
         
-        HistorialSalinidad.objects.create(
-            sector=sector,
-            valor=data['salinidad'],
-            marca_tiempo=data['marca_tiempo']
-        )
+        # Guardar temperatura si existe
+        if data.get('temperatura') is not None:
+            HistorialTemperatura.objects.create(
+                sector=sector,
+                valor=data['temperatura'],
+                marca_tiempo=marca_tiempo
+            )
         
-        HistorialPh.objects.create(
-            sector=sector,
-            valor=data['ph'],
-            marca_tiempo=data['marca_tiempo']
-        )
+        # Guardar salinidad si existe
+        if data.get('salinidad') is not None:
+            HistorialSalinidad.objects.create(
+                sector=sector,
+                valor=data['salinidad'],
+                marca_tiempo=marca_tiempo
+            )
         
-        HistorialTurbidez.objects.create(
-            sector=sector,
-            valor=data['turbidez'],
-            marca_tiempo=data['marca_tiempo']
-        )
+        # Guardar pH si existe
+        if data.get('ph') is not None:
+            HistorialPh.objects.create(
+                sector=sector,
+                valor=data['ph'],
+                marca_tiempo=marca_tiempo
+            )
         
-        HistorialHumedad.objects.create(
-            sector=sector,
-            valor=data['humedad'],
-            marca_tiempo=data['marca_tiempo']
-        )
+        # Guardar turbidez si existe
+        if data.get('turbidez') is not None:
+            HistorialTurbidez.objects.create(
+                sector=sector,
+                valor=data['turbidez'],
+                marca_tiempo=marca_tiempo
+            )
+        
+        # Guardar humedad si existe
+        if data.get('humedad') is not None:
+            HistorialHumedad.objects.create(
+                sector=sector,
+                valor=data['humedad'],
+                marca_tiempo=marca_tiempo
+            )
         
         return Response(
             {'status': 'success', 'mensaje': 'Lectura guardada correctamente'},
@@ -89,6 +99,7 @@ def test_api(request):
     """
     Endpoint simple para probar que la API funciona.
     """
+    from django.utils import timezone
     return Response({
         'status': 'ok',
         'mensaje': 'API funcionando correctamente',
