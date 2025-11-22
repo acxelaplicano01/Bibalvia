@@ -9,14 +9,14 @@ from django.views.decorators.http import require_http_methods
 from django.conf import settings
 from django.shortcuts import render, redirect
 from dashboard.models import Sector, Zona
-from django.views.decorators.http import require_POST
+from django.contrib import messages
 from django.core.files.storage import FileSystemStorage
 from django.contrib.auth.decorators import login_required
 
 # Configuración serial
-SERIAL_PORT = 'COM3'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
+SERIAL_PORT = '/dev/ttyACM0'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
 BAUD_RATE = 9600
-TIMEOUT = 2
+TIMEOUT = 3
 
 lectura_activa = False
 conexion_serial = None
@@ -130,16 +130,17 @@ def sector_create(request):
                         nombre_sector=nombre_sector if nombre_sector else None
                     )
                     
-                    # Asociar zonas si existen
                     if zonas_ids:
                         zona_ids_list = [int(id) for id in zonas_ids.split(',') if id]
                         sector.zonas.set(zona_ids_list)
                     
-                    return redirect(f'/?toast=Sector creado exitosamente en ({latitud}, {longitud})&toast_tipo=success')
+                    # Usar messages en lugar de query params
+                    messages.success(request, f'Sector creado exitosamente en ({latitud}, {longitud})')
+                    return redirect('home')  # Sin parámetros
+                    
                 except ValueError:
-                    return redirect('/?toast=Coordenadas inválidas&toast_tipo=error')
-            else:
-                return redirect('/?toast=Por favor selecciona una ubicación en el mapa&toast_tipo=error')
+                    messages.error(request, 'Coordenadas inválidas')
+                    return redirect('home')
     
     # GET: Cargar todas las zonas
     zonas = Zona.objects.all()
@@ -182,7 +183,7 @@ def conectar_arduino():
     try:
         if conexion_serial is None or not conexion_serial.is_open:
             conexion_serial = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=TIMEOUT)
-            time.sleep(2)
+            time.sleep(5)
         return True
     except serial.SerialException as e:
         print(f"Error conectando Arduino: {e}")
@@ -217,7 +218,7 @@ def iniciar_lectura_sensores(request):
     
     if not conectar_arduino():
         return JsonResponse({
-            'error': 'No se pudo conectar con Arduino en COM3'
+            'error': 'No se pudo conectar con Arduino en el puerto serial.'
         }, status=500)
     
     return JsonResponse({'status': 'iniciado'})
@@ -246,7 +247,7 @@ def stream_sensores(request):
             else:
                 yield f"data: {json.dumps({'error': 'Sin datos'})}\n\n"
             
-            time.sleep(2)
+            time.sleep(5)
         
         yield "data: {\"status\": \"cerrado\"}\n\n"
     

@@ -46,29 +46,25 @@
     </div>
 
     <script>
-        // Sistema de notificaciones toast
+        // Sistema de notificaciones toast (sin cambios)
         function mostrarToast(mensaje, tipo = 'success') {
             const container = document.getElementById('toast-container');
-
             const toast = document.createElement('div');
-            toast.className = `bg-white px-4 py-2 rounded-lg shadow-lg shadow-neutral-400 font-semibold transform transition-all duration-300 translate-x-full border ${tipo === 'success' ? 'border-green-600' : 'border-red-700'}
-                }`;
+            toast.className = `bg-white px-4 py-2 rounded-lg shadow-lg shadow-neutral-400 font-semibold transform transition-all duration-300 translate-x-full border ${tipo === 'success' ? 'border-green-600' : 'border-red-700'}`;
 
             toast.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <i class="fa-solid ${tipo === 'success' ? 'fa-circle-check text-green-600' : 'fa-circle-exclamation text-red-700'}"></i>
-                    <span>${mensaje}</span>
-                </div>
-            `;
+            <div class="flex items-center gap-3">
+                <i class="fa-solid ${tipo === 'success' ? 'fa-circle-check text-green-600' : 'fa-circle-exclamation text-red-700'}"></i>
+                <span>${mensaje}</span>
+            </div>
+        `;
 
             container.appendChild(toast);
 
-            // Animación de entrada
             setTimeout(() => {
                 toast.classList.remove('translate-x-full');
             }, 10);
 
-            // Auto-ocultar después de 4 segundos
             setTimeout(() => {
                 toast.classList.add('translate-x-full', 'opacity-0');
                 setTimeout(() => {
@@ -77,13 +73,14 @@
             }, 4000);
         }
 
-        // Verificar si hay mensajes de Django en sessionStorage
         window.addEventListener('DOMContentLoaded', function () {
             const mensaje = sessionStorage.getItem('toast_mensaje');
             const tipo = sessionStorage.getItem('toast_tipo');
 
             if (mensaje) {
-                mostrarToast(mensaje, tipo || 'success');
+                // Mapear tags de Django messages a tu sistema
+                const tipoToast = tipo === 'error' ? 'error' : 'success';
+                mostrarToast(mensaje, tipoToast);
                 sessionStorage.removeItem('toast_mensaje');
                 sessionStorage.removeItem('toast_tipo');
             }

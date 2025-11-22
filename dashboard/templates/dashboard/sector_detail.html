@@ -79,7 +79,7 @@
                     class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
                     <i class="fa-solid fa-vial text-green-600 fa-2x"></i>
                     <div class="flex flex-col align-items-center">
-                        <span class="text-xl font-bold">--</span>
+                        <span class="text-xl font-bold" id="valor-ph">--</span>
                         <h3 class="text-sm">Acidez (pH)</h3>
                     </div>
                 </article>
@@ -103,6 +103,8 @@
                 </article>
             </div>
 
+
+            {% if IS_LOCAL %}
             <button type="button" id="leerDatos" onclick="leerDatos()"
                 class="bg-green-700 text-white flex gap-4 px-4 py-6 rounded-lg shadow-md h-max w-full justify-center items-center active:scale-98 hover:bg-green-600 transition-all">
                 <i class="fa-solid fa-circle-play fa-2x"></i>
@@ -110,7 +112,15 @@
                     <span class="text-xl font-semibold">Leer Sensores</span>
                 </div>
             </button>
-        </div>
+            {% else %}
+            <div
+                class="bg-gray-100 text-gray-500 flex gap-4 px-4 py-6 rounded-lg shadow-md h-max w-full justify-center items-center">
+                <i class="fa-solid fa-lock fa-2x"></i>
+                <div class="flex flex-col align-items-center">
+                    <span class="text-xl font-semibold">Lectura de Sensores Deshabilitada en la Nube</span>
+                </div>
+            </div>
+            {% endif %}
     </section>
 
     {# Gráfico #}
@@ -154,11 +164,13 @@
                     <h6 class="font-semibold mb-3">Anexos</h6>
 
                     <!-- INPUT -->
+                    {% if IS_LOCAL %}
                     <label
                         class="border border-dashed border-gray-400 rounded-lg p-4 text-center text-sm cursor-pointer hover:bg-gray-50">
                         <input type="file" accept="image/*" class="hidden" id="uploadImg">
                         Haz clic para subir una imagen
                     </label>
+                    {% endif %}
 
                     <!-- GRID DE IMÁGENES -->
                     <div id="previewGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4 overflow-auto h-64">
@@ -186,11 +198,13 @@
 <script>
     // Buffer de datos para el gráfico
     const MAX_POINTS = 20;
+    // En el buffer
     const buffer = {
         labels: [],
         temperatura: [],
         turbidez: [],
-        humedad: []
+        humedad: [],
+        ph: []  // ← NUEVO
     };
 
     function nowLabel() {
@@ -204,6 +218,7 @@
         type: 'line',
         data: {
             labels: buffer.labels,
+            // En los datasets del gráfico
             datasets: [
                 {
                     label: 'Humedad (%)',
@@ -220,6 +235,14 @@
                     backgroundColor: 'rgba(220,53,69,0.06)',
                     tension: 0.25,
                     yAxisID: 'y'
+                },
+                {
+                    label: 'pH',  // ← NUEVO
+                    data: buffer.ph,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16,185,129,0.06)',
+                    tension: 0.25,
+                    yAxisID: 'y2'
                 },
                 {
                     label: 'Turbidez (NTU)',
@@ -279,6 +302,16 @@
                     grid: {
                         drawOnChartArea: false,
                     }
+                },
+                y2: {  // ← NUEVO
+                    type: 'linear',
+                    display: false,  // Oculto para no saturar
+                    position: 'right',
+                    min: 0,
+                    max: 14,
+                    grid: {
+                        drawOnChartArea: false,
+                    }
                 }
             }
         }
@@ -289,6 +322,7 @@
         buffer.temperatura.push(Number(datos.temperatura?.toFixed(1) || 0));
         buffer.turbidez.push(Number(datos.turbidez || 0));
         buffer.humedad.push(Number(datos.humedad?.toFixed(1) || 0));
+        buffer.ph.push(Number(datos.ph?.toFixed(2) || 7));  // ← NUEVO
 
         // Mantener solo MAX_POINTS
         if (buffer.labels.length > MAX_POINTS) {
@@ -296,6 +330,7 @@
             buffer.temperatura.shift();
             buffer.turbidez.shift();
             buffer.humedad.shift();
+            buffer.ph.shift();  // ← NUEVO
         }
 
         // Actualizar gráfico
@@ -343,7 +378,6 @@
                     location.reload(); // Recarga para actualizar siguiente_num
                 }
             });
-
         contador++;
     });
 
@@ -461,11 +495,29 @@
             humedadElement.textContent = `${datos.humedad.toFixed(1)}%`;
         }
 
+        // pH ← NUEVO
+        if (datos.ph !== undefined) {
+            const phElement = document.getElementById('valor-ph');
+            phElement.textContent = datos.ph.toFixed(2);
+
+            // Colorear según el pH
+            if (datos.ph < 6.5) {
+                phElement.classList.add('text-red-600');
+                phElement.classList.remove('text-green-600', 'text-blue-600');
+            } else if (datos.ph > 8.5) {
+                phElement.classList.add('text-blue-600');
+                phElement.classList.remove('text-red-600', 'text-green-600');
+            } else {
+                phElement.classList.add('text-green-600');
+                phElement.classList.remove('text-red-600', 'text-blue-600');
+            }
+        }
+
         // Actualizar gráfico
         pushDataPoint(datos);
 
         // Animación
-        document.querySelectorAll('.fa-temperature-half, .fa-water, .fa-droplet').forEach(icon => {
+        document.querySelectorAll('.fa-temperature-half, .fa-water, .fa-droplet, .fa-vial').forEach(icon => {
             const card = icon.closest('article');
             card.classList.add('ring-2', 'ring-green-400');
             setTimeout(() => card.classList.remove('ring-2', 'ring-green-400'), 500);
@@ -474,7 +526,7 @@
         // Log
         const logElement = document.querySelector('.bg-slate-900');
         const timestamp = new Date().toLocaleTimeString();
-        logElement.innerHTML += `[${timestamp}] Temp: ${datos.temperatura?.toFixed(1)}°C | Turbidez: ${datos.turbidez?.toFixed(0)} NTU | Humedad: ${datos.humedad?.toFixed(1)}%<br>`;
+        logElement.innerHTML += `[${timestamp}] Temp: ${datos.temperatura?.toFixed(1)}°C | Turbidez: ${datos.turbidez?.toFixed(0)} NTU | Humedad: ${datos.humedad?.toFixed(1)}% | pH: ${datos.ph?.toFixed(2)}<br>`;
         logElement.scrollTop = logElement.scrollHeight;
     }
 
