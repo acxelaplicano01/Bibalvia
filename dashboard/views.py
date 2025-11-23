@@ -14,6 +14,7 @@ from dashboard.models import Sector, Zona
 from django.contrib import messages
 from django.core.files.storage import FileSystemStorage
 from django.contrib.auth.decorators import login_required
+from datetime import datetime, timedelta
 
 # Configuración serial
 SERIAL_PORT = '/dev/ttyACM0'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
@@ -39,17 +40,61 @@ def home(request):
     
     return render(request, 'dashboard/home.html', context)
 
+
 @login_required
 def sector_detail(request, id):
     sector = Sector.objects.prefetch_related('zonas').get(id=id)
 
-    # Obtener últimas lecturas
+    # Parámetros de filtro de fecha
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    
+    # Si no hay fechas, usar últimas 24 horas por defecto
+    if not fecha_inicio or not fecha_fin:
+        fecha_fin = timezone.now()
+        fecha_inicio = fecha_fin - timedelta(hours=24)
+    else:
+        # Convertir strings a datetime
+        fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%dT%H:%M')
+        fecha_fin = datetime.strptime(fecha_fin, '%Y-%m-%dT%H:%M')
+        # Hacer timezone-aware
+        fecha_inicio = timezone.make_aware(fecha_inicio)
+        fecha_fin = timezone.make_aware(fecha_fin)
+    
+    # Obtener TODAS las lecturas en el rango de fechas
+    temperaturas = sector.temperaturas.filter(
+        marca_tiempo__gte=fecha_inicio,
+        marca_tiempo__lte=fecha_fin
+    ).order_by('-marca_tiempo')[:100]  # Limitar a 100 registros más recientes
+    
+    salinidades = sector.salinidades.filter(
+        marca_tiempo__gte=fecha_inicio,
+        marca_tiempo__lte=fecha_fin
+    ).order_by('-marca_tiempo')[:100]
+    
+    ph_registros = sector.ph_registros.filter(
+        marca_tiempo__gte=fecha_inicio,
+        marca_tiempo__lte=fecha_fin
+    ).order_by('-marca_tiempo')[:100]
+    
+    turbideces = sector.turbideces.filter(
+        marca_tiempo__gte=fecha_inicio,
+        marca_tiempo__lte=fecha_fin
+    ).order_by('-marca_tiempo')[:100]
+    
+    humedades = sector.humedades.filter(
+        marca_tiempo__gte=fecha_inicio,
+        marca_tiempo__lte=fecha_fin
+    ).order_by('-marca_tiempo')[:100]
+    
+    # Obtener ÚLTIMOS valores (para las cards)
     ultima_temperatura = sector.temperaturas.order_by('-marca_tiempo').first()
     ultima_salinidad = sector.salinidades.order_by('-marca_tiempo').first()
     ultima_ph = sector.ph_registros.order_by('-marca_tiempo').first()
     ultima_turbidez = sector.turbideces.order_by('-marca_tiempo').first()
     ultima_humedad = sector.humedades.order_by('-marca_tiempo').first()
 
+    # Imágenes (sin cambios)
     carpeta = os.path.join(settings.MEDIA_ROOT, 'sectores')
     imagenes = []
     siguiente_num = 1
@@ -74,14 +119,27 @@ def sector_detail(request, id):
         'imagenes': imagenes,
         'MEDIA_URL': settings.MEDIA_URL,
         'siguiente_num': siguiente_num,
-        # Datos de sensores
+        
+        # Últimos valores (para las cards)
         'ultima_temperatura': ultima_temperatura,
         'ultima_salinidad': ultima_salinidad,
         'ultima_ph': ultima_ph,
         'ultima_turbidez': ultima_turbidez,
         'ultima_humedad': ultima_humedad,
+        
+        # Historial completo (para la tabla)
+        'temperaturas': temperaturas,
+        'salinidades': salinidades,
+        'ph_registros': ph_registros,
+        'turbideces': turbideces,
+        'humedades': humedades,
+        
+        # Fechas para el filtro
+        'fecha_inicio': fecha_inicio.strftime('%Y-%m-%dT%H:%M'),
+        'fecha_fin': fecha_fin.strftime('%Y-%m-%dT%H:%M'),
     }
     return render(request, 'dashboard/sector_detail.html', context)
+
 
 @login_required
 def sector_create(request):

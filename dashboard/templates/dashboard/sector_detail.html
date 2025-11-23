@@ -124,8 +124,6 @@
     </section>
 
     {# Gráfico #}
-
-    {# Gráfico #}
     <section class="bg-white border border-gray-300 rounded-lg m-4 p-4 h-112 flex flex-col">
         <h3 class="font-semibold mb-4 shrink-0">
             Valores en Tiempo Real
@@ -138,6 +136,86 @@
             <span>Mostrando últimas 20 lecturas de sensores</span>
         </div>
     </section>
+
+    <!-- Filtro de fechas -->
+    <section class="bg-white border border-gray-300 rounded-lg m-4 p-4">
+        <form method="GET" class="flex flex-wrap gap-3 items-end">
+            <div class="flex-1 min-w-40">
+                <label for="fecha_inicio" class="text-sm font-semibold mb-1 block">Fecha Inicio</label>
+                <input type="datetime-local" name="fecha_inicio" id="fecha_inicio" value="{{ fecha_inicio }}"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div class="flex-1 min-w-40">
+                <label for="fecha_fin" class="text-sm font-semibold mb-1 block">Fecha Fin</label>
+                <input type="datetime-local" name="fecha_fin" id="fecha_fin" value="{{ fecha_fin }}"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div class="flex gap-2 w-full sm:w-auto">
+                <button type="submit"
+                    class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                    <i class="fa-solid fa-filter"></i> Filtrar
+                </button>
+
+                <a href="{% url 'sector_detail' sector.id %}"
+                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">
+                    <i class="fa-solid fa-rotate-left"></i> Reset
+                </a>
+            </div>
+        </form>
+    </section>
+
+    <!-- Tabla de historial -->
+    <section class="bg-white border border-gray-300 rounded-lg m-4 p-4">
+        <h3 class="font-semibold mb-4">Historial de Lecturas</h3>
+
+        <!-- Responsive global -->
+        <div class="overflow-auto max-h-[70vh] rounded-lg">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Fecha/Hora</th>
+                        <th class="px-4 py-3 text-left">Temp.</th>
+                        <th class="px-4 py-3 text-left">pH</th>
+                        <th class="px-4 py-3 text-left">Turbidez</th>
+                        <th class="px-4 py-3 text-left">Humedad</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for temp in temperaturas %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 whitespace-nowrap">{{ temp.marca_tiempo|date:"d/m/Y H:i" }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">{{ temp.valor|floatformat:1 }}°C</td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            {% with ph_registros|first as ph %}
+                            {% if ph.marca_tiempo == temp.marca_tiempo %}{{ ph.valor|floatformat:2 }}{% else %}--{%endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            {% with turbideces|first as turb %}
+                            {% if turb.marca_tiempo == temp.marca_tiempo %}{{ turb.valor|floatformat:0 }} NTU{% else%}--{% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            {% with humedades|first as hum %}
+                            {% if hum.marca_tiempo == temp.marca_tiempo %}{{ hum.valor|floatformat:1 }}%{% else %}--{%endif %}
+                            {% endwith %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                            <i class="fa-solid fa-inbox text-3xl mb-2"></i>
+                            <p>No hay datos en el rango seleccionado</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
 
     <section class="flex gap-4 mx-4 mb-4 flex-col sm:flex-row items-stretch">
         <div class="w-full sm:w-1/2 flex">
@@ -190,7 +268,6 @@
             </div>
         </div>
     </section>
-
 </div>
 
 {# Gráfico #}
