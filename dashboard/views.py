@@ -102,13 +102,10 @@ def sector_create(request):
                         ] + [[coords_json[0]['lng'], coords_json[0]['lat']]]]
                     }
                     
-                    # Crear localmente
-                    zona = Zona.objects.create(
-                        nombre=nombre,
-                        geopoligono=geojson
-                    )
+                    # Crear en LOCAL
+                    zona = Zona.objects.create(nombre=nombre, geopoligono=geojson)
                     
-                    # Si estamos en LOCAL, sincronizar con la nube
+                    # Sincronizar con CLOUD si estamos en LOCAL
                     if settings.IS_LOCAL:
                         sincronizar_zona_a_nube(zona)
                     
@@ -124,7 +121,7 @@ def sector_create(request):
                 except Exception as e:
                     return JsonResponse({
                         'success': False,
-                        'mensaje': f'Error al crear zona: {str(e)}'
+                        'mensaje': f'Error: {str(e)}'
                     }, status=400)
         
         elif tipo == 'punto':
@@ -135,7 +132,7 @@ def sector_create(request):
             
             if latitud and longitud:
                 try:
-                    # Crear localmente
+                    # Crear en LOCAL
                     sector = Sector.objects.create(
                         latitud=float(latitud),
                         longitud=float(longitud),
@@ -146,7 +143,7 @@ def sector_create(request):
                         zona_ids_list = [int(id) for id in zonas_ids.split(',') if id]
                         sector.zonas.set(zona_ids_list)
                     
-                    # Si estamos en LOCAL, sincronizar con la nube
+                    # Sincronizar con CLOUD si estamos en LOCAL
                     if settings.IS_LOCAL:
                         sincronizar_sector_a_nube(sector)
                     
@@ -163,9 +160,11 @@ def sector_create(request):
     }
     return render(request, 'dashboard/sector_create.html', context)
 
-
 def sincronizar_sector_a_nube(sector):
-    """Sincroniza un sector LOCAL con la nube"""
+    """Sincroniza un sector LOCAL con CLOUD"""
+    if not settings.IS_LOCAL:
+        return False
+    
     if not settings.CLOUD_API_URL or not settings.CLOUD_API_KEY:
         print("⚠️ No hay configuración de nube")
         return False
@@ -187,23 +186,27 @@ def sincronizar_sector_a_nube(sector):
             f"{settings.CLOUD_API_URL}/crear-sector/",
             json=payload,
             headers=headers,
-            timeout=5
+            timeout=10
         )
         
         if response.status_code == 201:
-            print(f"✓ Sector sincronizado con la nube")
+            data = response.json()
+            print(f"✓ Sector sincronizado con la nube (ID cloud: {data.get('sector_id')})")
             return True
         else:
-            print(f"✗ Error al sincronizar sector: {response.status_code}")
+            print(f"✗ Error al sincronizar sector: {response.status_code} - {response.text}")
             return False
             
     except Exception as e:
-        print(f"✗ Error al sincronizar: {e}")
+        print(f"✗ Error al sincronizar sector: {e}")
         return False
-
-
+    
+    
 def sincronizar_zona_a_nube(zona):
-    """Sincroniza una zona LOCAL con la nube"""
+    """Sincroniza una zona LOCAL con CLOUD"""
+    if not settings.IS_LOCAL:
+        return False
+    
     if not settings.CLOUD_API_URL or not settings.CLOUD_API_KEY:
         print("⚠️ No hay configuración de nube")
         return False
@@ -223,20 +226,22 @@ def sincronizar_zona_a_nube(zona):
             f"{settings.CLOUD_API_URL}/crear-zona/",
             json=payload,
             headers=headers,
-            timeout=5
+            timeout=10
         )
         
-        if response.status_code == 201:
-            print(f"✓ Zona sincronizada con la nube")
+        if response.status_code in [200, 201]:
+            data = response.json()
+            print(f"✓ Zona sincronizada con la nube (ID cloud: {data.get('zona_id')})")
             return True
         else:
-            print(f"✗ Error al sincronizar zona: {response.status_code}")
+            print(f"✗ Error al sincronizar zona: {response.status_code} - {response.text}")
             return False
             
     except Exception as e:
-        print(f"✗ Error al sincronizar: {e}")
+        print(f"✗ Error al sincronizar zona: {e}")
         return False
-
+    
+    
 @login_required
 @csrf_exempt
 def upload_imagen_sector(request):
@@ -338,14 +343,16 @@ def stream_sensores(request):
             datos = leer_datos_arduino()
             
             if datos:
-                # 1. Enviar al frontend (navegador)
+                print(f"📊 Datos recibidos: {datos}")
+                
+                # 1. Enviar al navegador
                 yield f"data: {json.dumps(datos)}\n\n"
                 
-                # 2. Guardar en base de datos LOCAL (SQLite)
-                print(f"💾 Guardando lectura en base de datos local...")
+                # 2. Guardar en base de datos local
+                print(f"💾 Guardando en base de datos local...")
                 guardar_lectura_local(datos, sector_id)
                 
-                # 3. Si estamos en LOCAL, enviar a la nube
+                # 3. Enviar a la nube si estamos en LOCAL
                 if settings.IS_LOCAL:
                     print(f"☁️ Enviando a la nube...")
                     enviar_a_nube(datos, sector_id)
@@ -361,8 +368,9 @@ def stream_sensores(request):
     response['X-Accel-Buffering'] = 'no'
     return response
 
+
 def guardar_lectura_local(datos, sector_id):
-    """Guarda las lecturas en la base de datos LOCAL (SQLite o PostgreSQL)"""
+    """Guarda lecturas en la base de datos LOCAL"""
     try:
         from dashboard.models import (
             Sector, HistorialTemperatura, HistorialSalinidad,
@@ -371,58 +379,46 @@ def guardar_lectura_local(datos, sector_id):
         
         sector = Sector.objects.get(id=sector_id)
         marca_tiempo = timezone.now()
+        guardados = 0
         
-        # Guardar temperatura si existe y es válida
         if datos.get('temperatura') is not None and datos['temperatura'] != -999:
             HistorialTemperatura.objects.create(
-                sector=sector,
-                valor=datos['temperatura'],
-                marca_tiempo=marca_tiempo
+                sector=sector, valor=datos['temperatura'], marca_tiempo=marca_tiempo
             )
-            print(f"💾 Temperatura guardada: {datos['temperatura']}°C")
+            guardados += 1
         
-        # Guardar pH si existe
         if datos.get('ph') is not None:
             HistorialPh.objects.create(
-                sector=sector,
-                valor=datos['ph'],
-                marca_tiempo=marca_tiempo
+                sector=sector, valor=datos['ph'], marca_tiempo=marca_tiempo
             )
-            print(f"💾 pH guardado: {datos['ph']}")
+            guardados += 1
         
-        # Guardar turbidez si existe
         if datos.get('turbidez') is not None:
             HistorialTurbidez.objects.create(
-                sector=sector,
-                valor=datos['turbidez'],
-                marca_tiempo=marca_tiempo
+                sector=sector, valor=datos['turbidez'], marca_tiempo=marca_tiempo
             )
-            print(f"💾 Turbidez guardada: {datos['turbidez']} NTU")
+            guardados += 1
         
-        # Guardar humedad si existe
         if datos.get('humedad') is not None:
             HistorialHumedad.objects.create(
-                sector=sector,
-                valor=datos['humedad'],
-                marca_tiempo=marca_tiempo
+                sector=sector, valor=datos['humedad'], marca_tiempo=marca_tiempo
             )
-            print(f"💾 Humedad guardada: {datos['humedad']}%")
+            guardados += 1
         
-        # Salinidad (si la agregas después)
         if datos.get('salinidad') is not None:
             HistorialSalinidad.objects.create(
-                sector=sector,
-                valor=datos['salinidad'],
-                marca_tiempo=marca_tiempo
+                sector=sector, valor=datos['salinidad'], marca_tiempo=marca_tiempo
             )
+            guardados += 1
         
+        print(f"💾 {guardados} lecturas guardadas en SQLite local")
         return True
         
     except Sector.DoesNotExist:
-        print(f"❌ ERROR: Sector {sector_id} no existe en la base de datos local")
+        print(f"❌ Sector {sector_id} no existe en local")
         return False
     except Exception as e:
-        print(f"❌ ERROR al guardar localmente: {e}")
+        print(f"❌ Error al guardar local: {e}")
         return False
 
 def enviar_a_nube(datos, sector_id):
