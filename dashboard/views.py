@@ -15,6 +15,7 @@ from django.contrib import messages
 from django.core.files.storage import FileSystemStorage
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta
+from django.db.models import F
 
 # Configuración serial
 SERIAL_PORT = '/dev/ttyACM0'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
@@ -40,7 +41,6 @@ def home(request):
     
     return render(request, 'dashboard/home.html', context)
 
-
 @login_required
 def sector_detail(request, id):
     sector = Sector.objects.prefetch_related('zonas').get(id=id)
@@ -61,13 +61,8 @@ def sector_detail(request, id):
         fecha_inicio = timezone.make_aware(fecha_inicio)
         fecha_fin = timezone.make_aware(fecha_fin)
     
-    # Obtener TODAS las lecturas en el rango de fechas
+    # Obtener todas las lecturas agrupadas
     temperaturas = sector.temperaturas.filter(
-        marca_tiempo__gte=fecha_inicio,
-        marca_tiempo__lte=fecha_fin
-    ).order_by('-marca_tiempo')[:100]  # Limitar a 100 registros más recientes
-    
-    salinidades = sector.salinidades.filter(
         marca_tiempo__gte=fecha_inicio,
         marca_tiempo__lte=fecha_fin
     ).order_by('-marca_tiempo')[:100]
@@ -87,14 +82,30 @@ def sector_detail(request, id):
         marca_tiempo__lte=fecha_fin
     ).order_by('-marca_tiempo')[:100]
     
-    # Obtener ÚLTIMOS valores (para las cards)
+    # Crear diccionarios indexados por marca_tiempo
+    ph_dict = {registro.marca_tiempo: registro for registro in ph_registros}
+    turb_dict = {registro.marca_tiempo: registro for registro in turbideces}
+    hum_dict = {registro.marca_tiempo: registro for registro in humedades}
+    
+    # Combinar todas las lecturas
+    lecturas_combinadas = []
+    for temp in temperaturas:
+        lecturas_combinadas.append({
+            'marca_tiempo': temp.marca_tiempo,
+            'temperatura': temp,
+            'ph': ph_dict.get(temp.marca_tiempo),
+            'turbidez': turb_dict.get(temp.marca_tiempo),
+            'humedad': hum_dict.get(temp.marca_tiempo),
+        })
+    
+    # Obtener últimos valores (para las cards)
     ultima_temperatura = sector.temperaturas.order_by('-marca_tiempo').first()
     ultima_salinidad = sector.salinidades.order_by('-marca_tiempo').first()
     ultima_ph = sector.ph_registros.order_by('-marca_tiempo').first()
     ultima_turbidez = sector.turbideces.order_by('-marca_tiempo').first()
     ultima_humedad = sector.humedades.order_by('-marca_tiempo').first()
 
-    # Imágenes (sin cambios)
+    # Imágenes
     carpeta = os.path.join(settings.MEDIA_ROOT, 'sectores')
     imagenes = []
     siguiente_num = 1
@@ -127,19 +138,14 @@ def sector_detail(request, id):
         'ultima_turbidez': ultima_turbidez,
         'ultima_humedad': ultima_humedad,
         
-        # Historial completo (para la tabla)
-        'temperaturas': temperaturas,
-        'salinidades': salinidades,
-        'ph_registros': ph_registros,
-        'turbideces': turbideces,
-        'humedades': humedades,
+        # Lecturas combinadas para la tabla
+        'lecturas_combinadas': lecturas_combinadas,
         
         # Fechas para el filtro
         'fecha_inicio': fecha_inicio.strftime('%Y-%m-%dT%H:%M'),
         'fecha_fin': fecha_fin.strftime('%Y-%m-%dT%H:%M'),
     }
     return render(request, 'dashboard/sector_detail.html', context)
-
 
 @login_required
 def sector_create(request):
@@ -403,17 +409,20 @@ def stream_sensores(request):
             if datos:
                 print(f"📊 Datos recibidos: {datos}")
                 
+                # Generar UN SOLO timestamp para toda la lectura
+                marca_tiempo = timezone.now()
+                
                 # 1. Enviar al navegador
                 yield f"data: {json.dumps(datos)}\n\n"
                 
-                # 2. Guardar en base de datos local
+                # 2. Guardar en base de datos local (con timestamp compartido)
                 print(f"💾 Guardando en base de datos local...")
-                guardar_lectura_local(datos, sector_id)
+                guardar_lectura_local(datos, sector_id, marca_tiempo)
                 
-                # 3. Enviar a la nube si estamos en LOCAL
+                # 3. Enviar a la nube si estamos en LOCAL (con timestamp compartido)
                 if settings.IS_LOCAL:
                     print(f"☁️ Enviando a la nube...")
-                    enviar_a_nube(datos, sector_id)
+                    enviar_a_nube(datos, sector_id, marca_tiempo)
             else:
                 yield f"data: {json.dumps({'error': 'Sin datos'})}\n\n"
             
@@ -426,8 +435,7 @@ def stream_sensores(request):
     response['X-Accel-Buffering'] = 'no'
     return response
 
-
-def guardar_lectura_local(datos, sector_id):
+def guardar_lectura_local(datos, sector_id, marca_tiempo=None):
     """Guarda lecturas en la base de datos LOCAL"""
     try:
         from dashboard.models import (
@@ -436,7 +444,11 @@ def guardar_lectura_local(datos, sector_id):
         )
         
         sector = Sector.objects.get(id=sector_id)
-        marca_tiempo = timezone.now()
+        
+        # Usar timestamp proporcionado o generar uno nuevo
+        if marca_tiempo is None:
+            marca_tiempo = timezone.now()
+        
         guardados = 0
         
         if datos.get('temperatura') is not None and datos['temperatura'] != -999:
@@ -469,7 +481,7 @@ def guardar_lectura_local(datos, sector_id):
             )
             guardados += 1
         
-        print(f"💾 {guardados} lecturas guardadas en SQLite local")
+        print(f"💾 {guardados} lecturas guardadas en local")
         return True
         
     except Sector.DoesNotExist:
@@ -479,21 +491,25 @@ def guardar_lectura_local(datos, sector_id):
         print(f"❌ Error al guardar local: {e}")
         return False
 
-def enviar_a_nube(datos, sector_id):
+def enviar_a_nube(datos, sector_id, marca_tiempo=None):
     """Envía datos a la instancia en la nube"""
     if not settings.CLOUD_API_URL or not settings.CLOUD_API_KEY:
         print("⚠️ No hay configuración de nube")
         return False
     
     try:
+        # Usar timestamp proporcionado o generar uno nuevo
+        if marca_tiempo is None:
+            marca_tiempo = timezone.now()
+        
         payload = {
             'sector_id': int(sector_id),
             'temperatura': float(datos.get('temperatura')) if datos.get('temperatura') is not None else None,
-            'salinidad': None,  # Si tienes sensor de salinidad, agrégalo
+            'salinidad': None,
             'ph': float(datos.get('ph')) if datos.get('ph') is not None else None,
             'turbidez': float(datos.get('turbidez')) if datos.get('turbidez') is not None else None,
             'humedad': float(datos.get('humedad')) if datos.get('humedad') is not None else None,
-            'marca_tiempo': timezone.now().isoformat()
+            'marca_tiempo': marca_tiempo.isoformat()  # Usar el timestamp compartido
         }
         
         headers = {
@@ -509,14 +525,14 @@ def enviar_a_nube(datos, sector_id):
         )
         
         if response.status_code == 201:
-            print(f"✓ Datos enviados a la nube: T={datos.get('temperatura')}°C")
+            print(f"✓ Datos enviados a la nube")
             return True
         else:
-            print(f"✗ Error al enviar a nube: {response.status_code} - {response.text}")
+            print(f"✗ Error: {response.status_code} - {response.text}")
             return False
             
     except requests.exceptions.RequestException as e:
-        print(f"✗ Error de conexión con la nube: {e}")
+        print(f"✗ Error de conexión: {e}")
         return False
     except Exception as e:
         print(f"✗ Error inesperado: {e}")

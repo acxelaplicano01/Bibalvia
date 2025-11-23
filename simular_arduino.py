@@ -2,6 +2,8 @@ import os
 import django
 import random
 import time
+from django.utils import timezone
+
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bivalvia.settings')
 django.setup()
@@ -41,10 +43,12 @@ print("\n📡 Enviando datos cada 5 segundos...")
 print("🛑 Presiona Ctrl+C para detener\n")
 print("-" * 60)
 
+
 try:
     contador = 1
     while True:
         datos = generar_datos_realistas()
+        marca_tiempo = timezone.now()  # ← Generar una sola vez
         
         print(f"\n📊 Lectura #{contador} - {time.strftime('%H:%M:%S')}")
         print(f"   🌡️  Temperatura: {datos['temperatura']}°C")
@@ -52,17 +56,17 @@ try:
         print(f"   💧 Turbidez: {datos['turbidez']} NTU")
         print(f"   💨 Humedad: {datos['humedad']}%")
         
-        # Guardar localmente
+        # Guardar localmente (con timestamp compartido)
         print(f"   💾 Guardando en base de datos local...", end=" ")
-        if guardar_lectura_local(datos, sector_id):
+        if guardar_lectura_local(datos, sector_id, marca_tiempo):
             print("✅")
         else:
             print("❌")
         
-        # Enviar a la nube si estamos en LOCAL
+        # Enviar a la nube si estamos en LOCAL (con timestamp compartido)
         if settings.IS_LOCAL:
             print(f"   ☁️  Enviando a la nube...", end=" ")
-            if enviar_a_nube(datos, sector_id):
+            if enviar_a_nube(datos, sector_id, marca_tiempo):
                 print("✅")
             else:
                 print("❌")

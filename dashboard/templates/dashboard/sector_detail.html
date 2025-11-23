@@ -137,82 +137,166 @@
         </div>
     </section>
 
-    <!-- Filtro de fechas -->
+    <!-- Tabla de historial con filtros integrados -->
     <section class="bg-white border border-gray-300 rounded-lg m-4 p-4">
-        <form method="GET" class="flex flex-wrap gap-3 items-end">
-            <div class="flex-1 min-w-40">
-                <label for="fecha_inicio" class="text-sm font-semibold mb-1 block">Fecha Inicio</label>
-                <input type="datetime-local" name="fecha_inicio" id="fecha_inicio" value="{{ fecha_inicio }}"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
-            </div>
+        <!-- Header con título -->
+        <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+            <h3 class="font-semibold text-lg flex items-center gap-2">
+                Historial de Lecturas
+            </h3>
+            <span class="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                {{ lecturas_combinadas|length }} registro{{ lecturas_combinadas|length|pluralize }}
+            </span>
+        </div>
 
-            <div class="flex-1 min-w-40">
-                <label for="fecha_fin" class="text-sm font-semibold mb-1 block">Fecha Fin</label>
-                <input type="datetime-local" name="fecha_fin" id="fecha_fin" value="{{ fecha_fin }}"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
-            </div>
+        <!-- Filtros de fechas -->
+        <form method="GET" class="mb-4 pb-4 border-b border-gray-200">
+            <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+                <div class="flex-1 w-full sm:w-auto">
+                    <label for="fecha_inicio" class="text-sm font-semibold mb-1 block text-gray-700">
+                        <i class="fa-solid fa-calendar-days text-blue-500"></i>
+                        Fecha Inicio
+                    </label>
+                    <input type="datetime-local" name="fecha_inicio" id="fecha_inicio" value="{{ fecha_inicio }}"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                </div>
 
-            <div class="flex gap-2 w-full sm:w-auto">
-                <button type="submit"
-                    class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-                    <i class="fa-solid fa-filter"></i> Filtrar
-                </button>
+                <div class="flex-1 w-full sm:w-auto">
+                    <label for="fecha_fin" class="text-sm font-semibold mb-1 block text-gray-700">
+                        <i class="fa-solid fa-calendar-check text-blue-500"></i>
+                        Fecha Fin
+                    </label>
+                    <input type="datetime-local" name="fecha_fin" id="fecha_fin" value="{{ fecha_fin }}"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                </div>
 
-                <a href="{% url 'sector_detail' sector.id %}"
-                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">
-                    <i class="fa-solid fa-rotate-left"></i> Reset
-                </a>
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <button type="submit"
+                        class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-filter"></i>
+                        <span>Filtrar</span>
+                    </button>
+
+                    <a href="{% url 'sector_detail' sector.id %}"
+                        class="flex-1 sm:flex-none bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span>Reset</span>
+                    </a>
+                </div>
             </div>
         </form>
-    </section>
 
-    <!-- Tabla de historial -->
-    <section class="bg-white border border-gray-300 rounded-lg m-4 p-4">
-        <h3 class="font-semibold mb-4">Historial de Lecturas</h3>
+        <!-- Tabla -->
+        <div class="overflow-x-auto rounded-lg border border-gray-200">
+            <div class="overflow-y-auto max-h-[60vh]">
+                <table class="w-full min-w-full text-sm">
+                    <thead
+                        class="bg-linear-to-r from-gray-50 to-gray-100 text-xs uppercase text-gray-600 sticky top-0 z-10">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-semibold border-b-2 border-gray-300">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-clock text-gray-500"></i>
+                                    Fecha/Hora
+                                </div>
+                            </th>
+                            <th class="px-4 py-3 text-left font-semibold border-b-2 border-gray-300">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-temperature-half text-red-500"></i>
+                                    Temp.
+                                </div>
+                            </th>
+                            <th class="px-4 py-3 text-left font-semibold border-b-2 border-gray-300">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-vial text-green-600"></i>
+                                    pH
+                                </div>
+                            </th>
+                            <th class="px-4 py-3 text-left font-semibold border-b-2 border-gray-300">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-water text-amber-500"></i>
+                                    Turbidez
+                                </div>
+                            </th>
+                            <th class="px-4 py-3 text-left font-semibold border-b-2 border-gray-300">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-droplet text-blue-500"></i>
+                                    Humedad
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for lectura in lecturas_combinadas %}
+                        <tr class="hover:bg-blue-50 transition-colors">
+                            <td class="px-4 py-3 whitespace-nowrap font-medium text-gray-700">
+                                <div class="flex flex-col">
+                                    <span class="text-xs text-gray-500">{{ lectura.marca_tiempo|date:"d/m/Y" }}</span>
+                                    <span class="font-semibold">{{ lectura.marca_tiempo|date:"H:i:s" }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                {% if lectura.temperatura %}
+                                <span class="text-red-600 font-bold">{{ lectura.temperatura.valor|floatformat:1}}°C</span>
+                                {% else %}
+                                <span class="text-gray-300 text-xs">Sin datos</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                {% if lectura.ph %}
+                                <span class="text-green-600 font-bold">{{ lectura.ph.valor|floatformat:2 }}</span>
+                                {% else %}
+                                <span class="text-gray-300 text-xs">Sin datos</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                {% if lectura.turbidez %}
+                                <span class="text-amber-600 font-bold">{{ lectura.turbidez.valor|floatformat:0 }}</span>
+                                <span class="text-gray-500 text-xs ml-1">NTU</span>
+                                {% else %}
+                                <span class="text-gray-300 text-xs">Sin datos</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                {% if lectura.humedad %}
+                                <span class="text-blue-600 font-bold">{{ lectura.humedad.valor|floatformat:1 }}</span>
+                                <span class="text-gray-500 text-xs">%</span>
+                                {% else %}
+                                <span class="text-gray-300 text-xs">Sin datos</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-4 py-16 text-center">
+                                <div class="flex flex-col items-center gap-4 text-gray-400">
+                                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                                        <i class="fa-solid fa-inbox text-3xl"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-lg font-semibold text-gray-600 mb-1">No hay datos disponibles</p>
+                                        <p class="text-sm text-gray-500">Intenta ajustar el rango de fechas o espera a
+                                            que se registren nuevas lecturas</p>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-        <!-- Responsive global -->
-        <div class="overflow-auto max-h-[70vh] rounded-lg">
-            <table class="min-w-full divide-y divide-gray-200 text-sm">
-                <thead class="bg-gray-50 text-xs uppercase text-gray-500">
-                    <tr>
-                        <th class="px-4 py-3 text-left">Fecha/Hora</th>
-                        <th class="px-4 py-3 text-left">Temp.</th>
-                        <th class="px-4 py-3 text-left">pH</th>
-                        <th class="px-4 py-3 text-left">Turbidez</th>
-                        <th class="px-4 py-3 text-left">Humedad</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    {% for temp in temperaturas %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-3 whitespace-nowrap">{{ temp.marca_tiempo|date:"d/m/Y H:i" }}</td>
-                        <td class="px-4 py-3 whitespace-nowrap">{{ temp.valor|floatformat:1 }}°C</td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            {% with ph_registros|first as ph %}
-                            {% if ph.marca_tiempo == temp.marca_tiempo %}{{ ph.valor|floatformat:2 }}{% else %}--{%endif %}
-                            {% endwith %}
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            {% with turbideces|first as turb %}
-                            {% if turb.marca_tiempo == temp.marca_tiempo %}{{ turb.valor|floatformat:0 }} NTU{% else%}--{% endif %}
-                            {% endwith %}
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            {% with humedades|first as hum %}
-                            {% if hum.marca_tiempo == temp.marca_tiempo %}{{ hum.valor|floatformat:1 }}%{% else %}--{%endif %}
-                            {% endwith %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-gray-500">
-                            <i class="fa-solid fa-inbox text-3xl mb-2"></i>
-                            <p>No hay datos en el rango seleccionado</p>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <!-- Footer con información -->
+        <div
+            class="mt-4 pt-3 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-gray-500">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-info-circle text-blue-500"></i>
+                <span>Mostrando máximo 100 registros más recientes</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-clock text-gray-400"></i>
+                <span>Última actualización: {{ lecturas_combinadas.0.marca_tiempo|date:"d/m/Y H:i" }}</span>
+            </div>
         </div>
     </section>
 
