@@ -89,25 +89,29 @@ def sector_create(request):
         tipo = request.POST.get('tipo')
         
         if tipo == 'zona':
-            # Guardar nueva zona
             nombre = request.POST.get('nombre')
             coordenadas = request.POST.get('coordenadas')
             
             if nombre and coordenadas:
                 try:
                     coords_json = json.loads(coordenadas)
-                    # Convertir a formato GeoJSON
                     geojson = {
                         "type": "Polygon",
                         "coordinates": [[
                             [coord['lng'], coord['lat']] for coord in coords_json
-                        ] + [[coords_json[0]['lng'], coords_json[0]['lat']]]]  # Cerrar el polígono
+                        ] + [[coords_json[0]['lng'], coords_json[0]['lat']]]]
                     }
                     
+                    # Crear localmente
                     zona = Zona.objects.create(
                         nombre=nombre,
                         geopoligono=geojson
                     )
+                    
+                    # Si estamos en LOCAL, sincronizar con la nube
+                    if settings.IS_LOCAL:
+                        sincronizar_zona_a_nube(zona)
+                    
                     return JsonResponse({
                         'success': True,
                         'mensaje': f'Zona "{nombre}" creada exitosamente',
@@ -122,14 +126,8 @@ def sector_create(request):
                         'success': False,
                         'mensaje': f'Error al crear zona: {str(e)}'
                     }, status=400)
-            else:
-                return JsonResponse({
-                    'success': False,
-                    'mensaje': 'Faltan datos para crear la zona'
-                }, status=400)
         
         elif tipo == 'punto':
-            # Guardar nuevo sector
             latitud = request.POST.get('latitud')
             longitud = request.POST.get('longitud')
             nombre_sector = request.POST.get('nombre_sector')
@@ -137,6 +135,7 @@ def sector_create(request):
             
             if latitud and longitud:
                 try:
+                    # Crear localmente
                     sector = Sector.objects.create(
                         latitud=float(latitud),
                         longitud=float(longitud),
@@ -147,21 +146,96 @@ def sector_create(request):
                         zona_ids_list = [int(id) for id in zonas_ids.split(',') if id]
                         sector.zonas.set(zona_ids_list)
                     
-                    # Usar messages en lugar de query params
-                    messages.success(request, f'Sector creado exitosamente en ({latitud}, {longitud})')
-                    return redirect('home')  # Sin parámetros
+                    # Si estamos en LOCAL, sincronizar con la nube
+                    if settings.IS_LOCAL:
+                        sincronizar_sector_a_nube(sector)
+                    
+                    messages.success(request, f'Sector creado exitosamente')
+                    return redirect('home')
                     
                 except ValueError:
                     messages.error(request, 'Coordenadas inválidas')
                     return redirect('home')
     
-    # GET: Cargar todas las zonas
     zonas = Zona.objects.all()
     context = {
         'zonas': list(zonas.values('id', 'nombre', 'geopoligono'))
     }
     return render(request, 'dashboard/sector_create.html', context)
 
+
+def sincronizar_sector_a_nube(sector):
+    """Sincroniza un sector LOCAL con la nube"""
+    if not settings.CLOUD_API_URL or not settings.CLOUD_API_KEY:
+        print("⚠️ No hay configuración de nube")
+        return False
+    
+    try:
+        payload = {
+            'latitud': float(sector.latitud),
+            'longitud': float(sector.longitud),
+            'nombre_sector': sector.nombre_sector,
+            'zonas_ids': list(sector.zonas.values_list('id', flat=True))
+        }
+        
+        headers = {
+            'X-API-Key': settings.CLOUD_API_KEY,
+            'Content-Type': 'application/json'
+        }
+        
+        response = requests.post(
+            f"{settings.CLOUD_API_URL}/crear-sector/",
+            json=payload,
+            headers=headers,
+            timeout=5
+        )
+        
+        if response.status_code == 201:
+            print(f"✓ Sector sincronizado con la nube")
+            return True
+        else:
+            print(f"✗ Error al sincronizar sector: {response.status_code}")
+            return False
+            
+    except Exception as e:
+        print(f"✗ Error al sincronizar: {e}")
+        return False
+
+
+def sincronizar_zona_a_nube(zona):
+    """Sincroniza una zona LOCAL con la nube"""
+    if not settings.CLOUD_API_URL or not settings.CLOUD_API_KEY:
+        print("⚠️ No hay configuración de nube")
+        return False
+    
+    try:
+        payload = {
+            'nombre': zona.nombre,
+            'geopoligono': zona.geopoligono
+        }
+        
+        headers = {
+            'X-API-Key': settings.CLOUD_API_KEY,
+            'Content-Type': 'application/json'
+        }
+        
+        response = requests.post(
+            f"{settings.CLOUD_API_URL}/crear-zona/",
+            json=payload,
+            headers=headers,
+            timeout=5
+        )
+        
+        if response.status_code == 201:
+            print(f"✓ Zona sincronizada con la nube")
+            return True
+        else:
+            print(f"✗ Error al sincronizar zona: {response.status_code}")
+            return False
+            
+    except Exception as e:
+        print(f"✗ Error al sincronizar: {e}")
+        return False
 
 @login_required
 @csrf_exempt

@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from .auth_views import login_view, logout_view
+from . import api_views
 
 urlpatterns = [
     path('', login_view, name='login'),
@@ -15,4 +16,10 @@ urlpatterns = [
     path('sensores/iniciar/', views.iniciar_lectura_sensores, name='iniciar_lectura_sensores'),
     path('sensores/detener/', views.detener_lectura_sensores, name='detener_lectura_sensores'),
     path('sensores/stream/', views.stream_sensores, name='stream_sensores'),
+    
+    # API Endpoints (CLOUD)
+    path('api/test/', api_views.test_api, name='api_test'),
+    path('api/lectura/', api_views.recibir_lectura, name='api_recibir_lectura'),
+    path('api/crear-sector/', api_views.crear_sector, name='api_crear_sector'),
+    path('api/crear-zona/', api_views.crear_zona, name='api_crear_zona'),
 ]

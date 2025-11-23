@@ -4,6 +4,68 @@ from rest_framework import status
 from django.conf import settings
 from dashboard.models import Sector, HistorialTemperatura, HistorialSalinidad, HistorialPh, HistorialTurbidez, HistorialHumedad
 from dashboard.serializers import LecturaSerializer
+from dashboard.models import Sector, Zona
+
+@api_view(['POST'])
+def crear_sector(request):
+    """Endpoint para crear sectores desde LOCAL"""
+    if not settings.IS_CLOUD:
+        return Response({'error': 'Solo en cloud'}, status=403)
+    
+    api_key = request.headers.get('X-API-Key')
+    if api_key != settings.CLOUD_API_KEY:
+        return Response({'error': 'API Key inválida'}, status=401)
+    
+    try:
+        data = request.data
+        
+        # Crear sector en la nube
+        sector = Sector.objects.create(
+            latitud=float(data['latitud']),
+            longitud=float(data['longitud']),
+            nombre_sector=data.get('nombre_sector')
+        )
+        
+        # Asociar zonas si existen
+        if data.get('zonas_ids'):
+            sector.zonas.set(data['zonas_ids'])
+        
+        return Response({
+            'status': 'success',
+            'sector_id': sector.id,
+            'mensaje': 'Sector creado en la nube'
+        }, status=201)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+
+@api_view(['POST'])
+def crear_zona(request):
+    """Endpoint para crear zonas desde LOCAL"""
+    if not settings.IS_CLOUD:
+        return Response({'error': 'Solo en cloud'}, status=403)
+    
+    api_key = request.headers.get('X-API-Key')
+    if api_key != settings.CLOUD_API_KEY:
+        return Response({'error': 'API Key inválida'}, status=401)
+    
+    try:
+        data = request.data
+        
+        zona = Zona.objects.create(
+            nombre=data['nombre'],
+            geopoligono=data['geopoligono']
+        )
+        
+        return Response({
+            'status': 'success',
+            'zona_id': zona.id,
+            'mensaje': 'Zona creada en la nube'
+        }, status=201)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
 
 @api_view(['POST'])
 def recibir_lectura(request):
