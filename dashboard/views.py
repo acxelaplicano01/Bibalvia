@@ -242,6 +242,8 @@ def sincronizar_zona_a_nube(zona):
 def upload_imagen_sector(request):
     if request.method == 'POST':
         imagen = request.FILES['imagen']
+        
+        # No se necesita porque en el nombre de la imagen va el id
         # sector_id = request.POST.get('sector_id')
 
         fs = FileSystemStorage(location='media/sectores/')
@@ -326,18 +328,26 @@ def stream_sensores(request):
     def event_stream():
         global lectura_activa
         
-        # Obtener el sector_id del request (debes pasarlo desde el frontend)
         sector_id = request.GET.get('sector_id')
+        
+        if not sector_id:
+            yield f"data: {json.dumps({'error': 'Falta sector_id'})}\n\n"
+            return
         
         while lectura_activa:
             datos = leer_datos_arduino()
             
             if datos:
-                # Enviar al frontend
+                # 1. Enviar al frontend (navegador)
                 yield f"data: {json.dumps(datos)}\n\n"
                 
-                # Si estamos en LOCAL, enviar a la nube
-                if settings.IS_LOCAL and sector_id:
+                # 2. Guardar en base de datos LOCAL (SQLite)
+                print(f"💾 Guardando lectura en base de datos local...")
+                guardar_lectura_local(datos, sector_id)
+                
+                # 3. Si estamos en LOCAL, enviar a la nube
+                if settings.IS_LOCAL:
+                    print(f"☁️ Enviando a la nube...")
                     enviar_a_nube(datos, sector_id)
             else:
                 yield f"data: {json.dumps({'error': 'Sin datos'})}\n\n"
@@ -351,6 +361,69 @@ def stream_sensores(request):
     response['X-Accel-Buffering'] = 'no'
     return response
 
+def guardar_lectura_local(datos, sector_id):
+    """Guarda las lecturas en la base de datos LOCAL (SQLite o PostgreSQL)"""
+    try:
+        from dashboard.models import (
+            Sector, HistorialTemperatura, HistorialSalinidad,
+            HistorialPh, HistorialTurbidez, HistorialHumedad
+        )
+        
+        sector = Sector.objects.get(id=sector_id)
+        marca_tiempo = timezone.now()
+        
+        # Guardar temperatura si existe y es válida
+        if datos.get('temperatura') is not None and datos['temperatura'] != -999:
+            HistorialTemperatura.objects.create(
+                sector=sector,
+                valor=datos['temperatura'],
+                marca_tiempo=marca_tiempo
+            )
+            print(f"💾 Temperatura guardada: {datos['temperatura']}°C")
+        
+        # Guardar pH si existe
+        if datos.get('ph') is not None:
+            HistorialPh.objects.create(
+                sector=sector,
+                valor=datos['ph'],
+                marca_tiempo=marca_tiempo
+            )
+            print(f"💾 pH guardado: {datos['ph']}")
+        
+        # Guardar turbidez si existe
+        if datos.get('turbidez') is not None:
+            HistorialTurbidez.objects.create(
+                sector=sector,
+                valor=datos['turbidez'],
+                marca_tiempo=marca_tiempo
+            )
+            print(f"💾 Turbidez guardada: {datos['turbidez']} NTU")
+        
+        # Guardar humedad si existe
+        if datos.get('humedad') is not None:
+            HistorialHumedad.objects.create(
+                sector=sector,
+                valor=datos['humedad'],
+                marca_tiempo=marca_tiempo
+            )
+            print(f"💾 Humedad guardada: {datos['humedad']}%")
+        
+        # Salinidad (si la agregas después)
+        if datos.get('salinidad') is not None:
+            HistorialSalinidad.objects.create(
+                sector=sector,
+                valor=datos['salinidad'],
+                marca_tiempo=marca_tiempo
+            )
+        
+        return True
+        
+    except Sector.DoesNotExist:
+        print(f"❌ ERROR: Sector {sector_id} no existe en la base de datos local")
+        return False
+    except Exception as e:
+        print(f"❌ ERROR al guardar localmente: {e}")
+        return False
 
 def enviar_a_nube(datos, sector_id):
     """Envía datos a la instancia en la nube"""
