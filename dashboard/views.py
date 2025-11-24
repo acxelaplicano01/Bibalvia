@@ -19,7 +19,8 @@ from django.db.models import F
 from django.core.files.storage import default_storage
 
 # Configuración serial
-SERIAL_PORT = '/dev/ttyACM0'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
+# SERIAL_PORT = '/dev/ttyACM0'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
+SERIAL_PORT = 'COM3'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
 BAUD_RATE = 9600
 TIMEOUT = 3
 

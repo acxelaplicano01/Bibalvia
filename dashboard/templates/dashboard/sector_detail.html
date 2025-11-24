@@ -338,12 +338,12 @@
 
                     <!-- GRID DE IMÁGENES -->
                     <div id="previewGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4 overflow-auto h-64">
-                        {% for img in sector.imagenes.all %}
+                        {% for img in imagenes %}
                         <div class="relative group">
-                            <img src="{{ img.url }}" class="rounded-lg object-cover w-full h-28">
+                            <img src="{{ MEDIA_URL }}sectores/{{ img }}" class="rounded-lg object-cover w-full h-28">
 
                             <!-- BOTÓN BORRAR -->
-                            <button onclick="borrarImagen('{{ img.nombre }}')"
+                            <button onclick="borrarImagen('{{ img }}')"
                                 class="absolute top-1 right-1 px-2 py-1 bg-red-600 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition">
                                 <i class="fa-solid fa-trash"></i>
                             </button>
@@ -362,17 +362,13 @@
     // Buffer de datos para el gráfico
     const MAX_POINTS = 20;
     // En el buffer
-    const buffer = { labels: [], temperatura: [], turbidez: [], humedad: [], ph: [] };
-    const lecturasChart = {{ chart_data_json|safe }};
-    
-    lecturasChart.forEach(l => {
-        buffer.labels.push(l.marca_tiempo);
-        buffer.temperatura.push(l.temperatura);
-        buffer.turbidez.push(l.turbidez);
-        buffer.humedad.push(l.humedad);
-        buffer.ph.push(l.ph);
-    });
-    sensorChart.update('none');
+    const buffer = {
+        labels: [],
+        temperatura: [],
+        turbidez: [],
+        humedad: [],
+        ph: []  // ← NUEVO
+    };
 
     function nowLabel() {
         const now = new Date();
@@ -506,59 +502,59 @@
 </script>
 
 <script>
-let contador = {{ siguiente_num }};
-const sectorID = {{ sector.id }};
-const input = document.getElementById('uploadImg');
-const grid = document.getElementById('previewGrid');
+    let contador = {{ siguiente_num }};
+    const sectorID = {{ sector.id }};     // viene de Django
+    const input = document.getElementById('uploadImg');
+    const grid = document.getElementById('previewGrid');
 
-input.addEventListener('change', () => {
-    const file = input.files[0];
-    if (!file) return;
+    input.addEventListener('change', () => {
+        const file = input.files[0];
+        if (!file) return;
 
-    const formData = new FormData();
-    const extension = file.name.split('.').pop();
-    const newName = `sector${sectorID}-imagen${contador}.${extension}`;
-    formData.append('imagen', file, newName);
-    formData.append('sector_id', sectorID);
-
-    fetch("{% url 'upload_imagen_sector' %}", {
-        method: "POST",
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}'
-        },
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.ok) {
-            // --- PREVIEW DESDE S3 ---
+        // --- PREVIEW EN GRID ---
+        const reader = new FileReader();
+        reader.onload = e => {
             const img = document.createElement('img');
-            img.src = data.url;  // URL devuelta por el backend (S3)
+            img.src = e.target.result;
             img.className = "rounded-lg shadow-sm object-cover w-full h-28";
             grid.appendChild(img);
-            contador++;
-        }
-    })
-    .catch(err => console.error('Error subiendo imagen:', err));
-});
+        };
+        reader.readAsDataURL(file);
 
-function borrarImagen(nombre) {
-    fetch("{% url 'borrar_imagen_sector' %}", {
-        method: "POST",
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ nombre: nombre })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.ok) location.reload();
-    })
-    .catch(err => console.error('Error borrando imagen:', err));
-}
+        // --- ENVÍO AL BACKEND ---
+        const formData = new FormData();
+        const extension = file.name.split('.').pop();
+        const newName = `sector${sectorID}-imagen${contador}.${extension}`;
+        formData.append('imagen', file, newName);
+        formData.append('sector_id', sectorID);
+
+        fetch("{% url 'upload_imagen_sector' %}", {
+            method: "POST",
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.ok) {
+                    location.reload(); // Recarga para actualizar siguiente_num
+                }
+            });
+        contador++;
+    });
+
+    function borrarImagen(nombre) {
+        fetch("{% url 'borrar_imagen_sector' %}", {
+            method: "POST",
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ nombre: nombre })
+        }).then(() => location.reload());
+    }
 </script>
-
 <script>
 
     let reading = false;
