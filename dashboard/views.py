@@ -10,7 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.conf import settings
 from django.shortcuts import render, redirect
-from dashboard.models import Sector, Zona, Imagen
+from dashboard.models import Sector, Zona
 from django.contrib import messages
 from django.core.files.storage import FileSystemStorage
 from django.contrib.auth.decorators import login_required
@@ -45,50 +45,38 @@ def home(request):
 @login_required
 def sector_detail(request, id):
     sector = Sector.objects.prefetch_related('zonas').get(id=id)
-
+    
     # Parámetros de filtro de fecha
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
     
-    # Si no hay fechas, usar últimas 24 horas por defecto
     if not fecha_inicio or not fecha_fin:
         fecha_fin = timezone.now()
         fecha_inicio = fecha_fin - timedelta(hours=24)
     else:
-        # Convertir strings a datetime
-        fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%dT%H:%M')
-        fecha_fin = datetime.strptime(fecha_fin, '%Y-%m-%dT%H:%M')
-        # Hacer timezone-aware
-        fecha_inicio = timezone.make_aware(fecha_inicio)
-        fecha_fin = timezone.make_aware(fecha_fin)
+        fecha_inicio = timezone.make_aware(datetime.strptime(fecha_inicio, '%Y-%m-%dT%H:%M'))
+        fecha_fin = timezone.make_aware(datetime.strptime(fecha_fin, '%Y-%m-%dT%H:%M'))
     
-    # Obtener todas las lecturas agrupadas
+    # Todas las lecturas para la tabla
     temperaturas = sector.temperaturas.filter(
-        marca_tiempo__gte=fecha_inicio,
-        marca_tiempo__lte=fecha_fin
-    ).order_by('-marca_tiempo')[:100]
-    
+        marca_tiempo__gte=fecha_inicio, marca_tiempo__lte=fecha_fin
+    ).order_by('-marca_tiempo')
     ph_registros = sector.ph_registros.filter(
-        marca_tiempo__gte=fecha_inicio,
-        marca_tiempo__lte=fecha_fin
-    ).order_by('-marca_tiempo')[:100]
-    
+        marca_tiempo__gte=fecha_inicio, marca_tiempo__lte=fecha_fin
+    ).order_by('-marca_tiempo')
     turbideces = sector.turbideces.filter(
-        marca_tiempo__gte=fecha_inicio,
-        marca_tiempo__lte=fecha_fin
-    ).order_by('-marca_tiempo')[:100]
-    
+        marca_tiempo__gte=fecha_inicio, marca_tiempo__lte=fecha_fin
+    ).order_by('-marca_tiempo')
     humedades = sector.humedades.filter(
-        marca_tiempo__gte=fecha_inicio,
-        marca_tiempo__lte=fecha_fin
-    ).order_by('-marca_tiempo')[:100]
+        marca_tiempo__gte=fecha_inicio, marca_tiempo__lte=fecha_fin
+    ).order_by('-marca_tiempo')
     
-    # Crear diccionarios indexados por marca_tiempo
-    ph_dict = {registro.marca_tiempo: registro for registro in ph_registros}
-    turb_dict = {registro.marca_tiempo: registro for registro in turbideces}
-    hum_dict = {registro.marca_tiempo: registro for registro in humedades}
+    # Diccionarios por marca de tiempo
+    ph_dict = {r.marca_tiempo: r for r in ph_registros}
+    turb_dict = {r.marca_tiempo: r for r in turbideces}
+    hum_dict = {r.marca_tiempo: r for r in humedades}
     
-    # Combinar todas las lecturas
+    # Lecturas combinadas para la tabla
     lecturas_combinadas = []
     for temp in temperaturas:
         lecturas_combinadas.append({
@@ -98,55 +86,59 @@ def sector_detail(request, id):
             'turbidez': turb_dict.get(temp.marca_tiempo),
             'humedad': hum_dict.get(temp.marca_tiempo),
         })
-    
-    # Obtener últimos valores (para las cards)
-    ultima_temperatura = sector.temperaturas.order_by('-marca_tiempo').first()
-    ultima_salinidad = sector.salinidades.order_by('-marca_tiempo').first()
-    ultima_ph = sector.ph_registros.order_by('-marca_tiempo').first()
-    ultima_turbidez = sector.turbideces.order_by('-marca_tiempo').first()
-    ultima_humedad = sector.humedades.order_by('-marca_tiempo').first()
 
+    # Últimos valores (cards)
+    ultima_temperatura = temperaturas.first()
+    ultima_salinidad = sector.salinidades.order_by('-marca_tiempo').first()
+    ultima_ph = ph_registros.first()
+    ultima_turbidez = turbideces.first()
+    ultima_humedad = humedades.first()
+    
+    # Últimos 20 registros para la chart
+    MAX_POINTS = 20
+    ultimas_temp = list(temperaturas[:MAX_POINTS])[::-1]
+    ultimos_ph = list(ph_registros[:MAX_POINTS])[::-1]
+    ultimas_turb = list(turbideces[:MAX_POINTS])[::-1]
+    ultimas_hum = list(humedades[:MAX_POINTS])[::-1]
+    
+    chart_data = []
+    for i in range(MAX_POINTS):
+        chart_data.append({
+            'marca_tiempo': ultimas_temp[i].marca_tiempo.strftime('%H:%M:%S') if i < len(ultimas_temp) else '',
+            'temperatura': ultimas_temp[i].valor if i < len(ultimas_temp) else 0,
+            'ph': ultimos_ph[i].valor if i < len(ultimos_ph) else 7,
+            'turbidez': ultimas_turb[i].valor if i < len(ultimas_turb) else 0,
+            'humedad': ultimas_hum[i].valor if i < len(ultimas_hum) else 0,
+        })
+    
     # Imágenes
     carpeta = os.path.join(settings.MEDIA_ROOT, 'sectores')
     imagenes = []
     siguiente_num = 1
-
     if os.path.exists(carpeta):
-        imagenes = [
-            img for img in os.listdir(carpeta)
-            if f'sector{id}' in img
-        ]
-
-        numeros = []
-        for img in imagenes:
-            match = re.search(rf'sector{id}-imagen(\d+)', img)
-            if match:
-                numeros.append(int(match.group(1)))
-        
+        imagenes = [img for img in os.listdir(carpeta) if f'sector{id}' in img]
+        numeros = [int(re.search(rf'sector{id}-imagen(\d+)', img).group(1))
+                   for img in imagenes if re.search(rf'sector{id}-imagen(\d+)', img)]
         if numeros:
             siguiente_num = max(numeros) + 1
-
+    
     context = {
         'sector': sector,
         'imagenes': imagenes,
         'MEDIA_URL': settings.MEDIA_URL,
         'siguiente_num': siguiente_num,
-        
-        # Últimos valores (para las cards)
         'ultima_temperatura': ultima_temperatura,
         'ultima_salinidad': ultima_salinidad,
         'ultima_ph': ultima_ph,
         'ultima_turbidez': ultima_turbidez,
         'ultima_humedad': ultima_humedad,
-        
-        # Lecturas combinadas para la tabla
         'lecturas_combinadas': lecturas_combinadas,
-        
-        # Fechas para el filtro
+        'chart_data_json': chart_data,  # <- Para la chart JS
         'fecha_inicio': fecha_inicio.strftime('%Y-%m-%dT%H:%M'),
         'fecha_fin': fecha_fin.strftime('%Y-%m-%dT%H:%M'),
     }
     return render(request, 'dashboard/sector_detail.html', context)
+
 
 @login_required
 def sector_create(request):
@@ -312,21 +304,14 @@ def sincronizar_zona_a_nube(zona):
 def upload_imagen_sector(request):
     if request.method == 'POST':
         imagen = request.FILES['imagen']
-        sector_id = request.POST.get('sector_id')
-        sector = Sector.objects.get(id=sector_id)
+        
+        # No se necesita porque en el nombre de la imagen va el id
+        # sector_id = request.POST.get('sector_id')
 
-        # Guardar en S3
-        filename = default_storage.save(imagen.name, imagen)
-        url = default_storage.url(filename)
+        fs = FileSystemStorage(location='media/sectores/')
+        filename = fs.save(imagen.name, imagen)
 
-        # Guardar registro en BD
-        img_obj = Imagen.objects.create(
-            sector=sector,
-            url=url,
-            nombre=imagen.name
-        )
-
-        return JsonResponse({'ok': True, 'filename': filename, 'url': url})
+        return JsonResponse({'ok': True, 'filename': filename})
 
 @login_required  
 @csrf_exempt
@@ -335,18 +320,13 @@ def borrar_imagen_sector(request):
         import json
         data = json.loads(request.body)
         nombre = data.get('nombre')
-        sector_id = data.get('sector_id')
 
-        try:
-            img = Imagen.objects.get(nombre=nombre, sector_id=sector_id)
-            if default_storage.exists(img.nombre):
-                default_storage.delete(img.nombre)
-            img.delete()
+        path = os.path.join(settings.MEDIA_ROOT, 'sectores', nombre)
+        if os.path.exists(path):
+            os.remove(path)
             return JsonResponse({'ok': True})
-        except Imagen.DoesNotExist:
-            return JsonResponse({'ok': False})
 
-
+    return JsonResponse({'ok': False})
 
 def conectar_arduino():
     global conexion_serial

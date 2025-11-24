@@ -362,13 +362,17 @@
     // Buffer de datos para el gráfico
     const MAX_POINTS = 20;
     // En el buffer
-    const buffer = {
-        labels: [],
-        temperatura: [],
-        turbidez: [],
-        humedad: [],
-        ph: []  // ← NUEVO
-    };
+    const buffer = { labels: [], temperatura: [], turbidez: [], humedad: [], ph: [] };
+    const lecturasChart = {{ chart_data_json|safe }};
+    
+    lecturasChart.forEach(l => {
+        buffer.labels.push(l.marca_tiempo);
+        buffer.temperatura.push(l.temperatura);
+        buffer.turbidez.push(l.turbidez);
+        buffer.humedad.push(l.humedad);
+        buffer.ph.push(l.ph);
+    });
+    sensorChart.update('none');
 
     function nowLabel() {
         const now = new Date();
