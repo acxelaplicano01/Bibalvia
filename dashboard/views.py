@@ -19,8 +19,8 @@ from django.db.models import F
 from django.core.files.storage import default_storage
 
 # Configuración serial
-# SERIAL_PORT = '/dev/ttyACM0'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
-SERIAL_PORT = 'COM3'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
+SERIAL_PORT = '/dev/ttyACM0'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
+# SERIAL_PORT = 'COM3'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
 BAUD_RATE = 9600
 TIMEOUT = 3
 
@@ -95,7 +95,7 @@ def sector_detail(request, id):
     ultima_turbidez = turbideces.first()
     ultima_humedad = humedades.first()
     
-    # Últimos 20 registros para la chart
+    # Últimos 20 registros para la chart - CONVERTIR A FLOAT
     MAX_POINTS = 20
     ultimas_temp = list(temperaturas[:MAX_POINTS])[::-1]
     ultimos_ph = list(ph_registros[:MAX_POINTS])[::-1]
@@ -104,12 +104,18 @@ def sector_detail(request, id):
     
     chart_data = []
     for i in range(MAX_POINTS):
+        # CONVERTIR Decimal a float para JSON
+        temp_val = float(ultimas_temp[i].valor) if i < len(ultimas_temp) else 0
+        ph_val = float(ultimos_ph[i].valor) if i < len(ultimos_ph) else 7
+        turb_val = float(ultimas_turb[i].valor) if i < len(ultimas_turb) else 0
+        hum_val = float(ultimas_hum[i].valor) if i < len(ultimas_hum) else 0
+        
         chart_data.append({
             'marca_tiempo': ultimas_temp[i].marca_tiempo.strftime('%H:%M:%S') if i < len(ultimas_temp) else '',
-            'temperatura': ultimas_temp[i].valor if i < len(ultimas_temp) else 0,
-            'ph': ultimos_ph[i].valor if i < len(ultimos_ph) else 7,
-            'turbidez': ultimas_turb[i].valor if i < len(ultimas_turb) else 0,
-            'humedad': ultimas_hum[i].valor if i < len(ultimas_hum) else 0,
+            'temperatura': temp_val,
+            'ph': ph_val,
+            'turbidez': turb_val,
+            'humedad': hum_val,
         })
     
     # Imágenes
@@ -134,12 +140,11 @@ def sector_detail(request, id):
         'ultima_turbidez': ultima_turbidez,
         'ultima_humedad': ultima_humedad,
         'lecturas_combinadas': lecturas_combinadas,
-        'chart_data_json': chart_data,  # <- Para la chart JS
+        'chart_data_json': chart_data,  # <- Ahora con valores float
         'fecha_inicio': fecha_inicio.strftime('%Y-%m-%dT%H:%M'),
         'fecha_fin': fecha_fin.strftime('%Y-%m-%dT%H:%M'),
     }
     return render(request, 'dashboard/sector_detail.html', context)
-
 
 @login_required
 def sector_create(request):

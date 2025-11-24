@@ -126,7 +126,11 @@
     {# Gráfico #}
     <section class="bg-white border border-gray-300 rounded-lg m-4 p-4 h-112 flex flex-col">
         <h3 class="font-semibold mb-4 shrink-0">
+            {% if IS_LOCAL %}
             Valores en Tiempo Real
+            {% elif IS_CLOUD %}
+            Últimos 20 valores registrados
+            {% endif %}
         </h3>
         <article class="flex-1 rounded-lg relative">
             <canvas id="sensorChart"></canvas>
@@ -238,7 +242,8 @@
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 {% if lectura.temperatura %}
-                                <span class="text-red-600 font-bold">{{lectura.temperatura.valor|floatformat:1}}°C</span>
+                                <span
+                                    class="text-red-600 font-bold">{{lectura.temperatura.valor|floatformat:1}}°C</span>
                                 {% else %}
                                 <span class="text-gray-300 text-xs">Sin datos</span>
                                 {% endif %}
@@ -303,6 +308,8 @@
     </section>
 
 
+    {% if IS_LOCAL %}
+
     <section class="flex gap-4 mx-4 mb-4 flex-col sm:flex-row items-stretch">
         <div class="w-full sm:w-1/2 flex">
             <div class="bg-white border border-gray-300 rounded-lg shadow-sm flex-1">
@@ -354,34 +361,65 @@
             </div>
         </div>
     </section>
+    {% endif %}
+
 </div>
 
 {# Gráfico #}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Debug -->
+<script>
+    console.log('Datos del chart:', {{ chart_data_json| safe }});
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
     // Buffer de datos para el gráfico
     const MAX_POINTS = 20;
-    // En el buffer
-    const buffer = {
-        labels: [],
-        temperatura: [],
-        turbidez: [],
-        humedad: [],
-        ph: []  // ← NUEVO
-    };
 
     function nowLabel() {
         const now = new Date();
         return now.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     }
 
+    // SOLUCIÓN: Declarar el buffer solo una vez
+    const buffer = {
+        labels: [],
+        temperatura: [],
+        turbidez: [],
+        humedad: [],
+        ph: []
+    };
+
+    {% if IS_CLOUD %}
+    // Cargar datos iniciales desde Django
+    const lecturasChart = {{ chart_data_json| safe }};
+    if (lecturasChart && lecturasChart.length > 0) {
+        lecturasChart.forEach(l => {
+            buffer.labels.push(l.marca_tiempo);
+            buffer.temperatura.push(Number(l.temperatura));
+            buffer.humedad.push(Number(l.humedad));
+            buffer.turbidez.push(Number(l.turbidez));
+            buffer.ph.push(Number(l.ph));
+        });
+    } else {
+        // Si no hay datos, inicializar con valores vacíos
+        for (let i = 0; i < MAX_POINTS; i++) {
+            buffer.labels.push('');
+            buffer.temperatura.push(0);
+            buffer.humedad.push(0);
+            buffer.turbidez.push(0);
+            buffer.ph.push(7);
+        }
+    }
+    {% endif %}
+
     // Inicializar Chart.js
     const ctx = document.getElementById('sensorChart').getContext('2d');
+
     const sensorChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: buffer.labels,
-            // En los datasets del gráfico
             datasets: [
                 {
                     label: 'Humedad (%)',
@@ -400,7 +438,7 @@
                     yAxisID: 'y'
                 },
                 {
-                    label: 'pH',  // ← NUEVO
+                    label: 'pH',
                     data: buffer.ph,
                     borderColor: '#10b981',
                     backgroundColor: 'rgba(16,185,129,0.06)',
@@ -466,9 +504,9 @@
                         drawOnChartArea: false,
                     }
                 },
-                y2: {  // ← NUEVO
+                y2: {
                     type: 'linear',
-                    display: false,  // Oculto para no saturar
+                    display: false,
                     position: 'right',
                     min: 0,
                     max: 14,
@@ -485,7 +523,7 @@
         buffer.temperatura.push(Number(datos.temperatura?.toFixed(1) || 0));
         buffer.turbidez.push(Number(datos.turbidez || 0));
         buffer.humedad.push(Number(datos.humedad?.toFixed(1) || 0));
-        buffer.ph.push(Number(datos.ph?.toFixed(2) || 7));  // ← NUEVO
+        buffer.ph.push(Number(datos.ph?.toFixed(2) || 7));
 
         // Mantener solo MAX_POINTS
         if (buffer.labels.length > MAX_POINTS) {
@@ -493,14 +531,17 @@
             buffer.temperatura.shift();
             buffer.turbidez.shift();
             buffer.humedad.shift();
-            buffer.ph.shift();  // ← NUEVO
+            buffer.ph.shift();
         }
 
         // Actualizar gráfico
         sensorChart.update('none');
     }
 </script>
-
+<!-- Debug -->
+<script>
+    console.log('Datos del chart:', {{ chart_data_json| safe }});
+</script>
 <script>
     let contador = {{ siguiente_num }};
     const sectorID = {{ sector.id }};     // viene de Django
@@ -714,9 +755,9 @@
     const zonasDelSector = [
         {% for zona in sector.zonas.all %}
     {
-        id: {{ zona.id }},
+        id: { { zona.id } },
         nombre: "{{ zona.nombre|escapejs }}",
-            geopoligono: {{ zona.geopoligono | safe }}
+            geopoligono: { { zona.geopoligono | safe } }
     } {% if not forloop.last %}, {% endif %}
     {% endfor %}
     ];
