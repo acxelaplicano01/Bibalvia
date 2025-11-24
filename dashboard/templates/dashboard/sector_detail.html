@@ -174,13 +174,13 @@
 
                 <div class="flex gap-4 w-full sm:w-auto">
                     <button type="submit"
-                        class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 shadow-sm">
+                        class="w-max bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 shadow-sm">
                         <i class="fa-solid fa-filter"></i>
                         <span>Filtrar</span>
                     </button>
 
                     <a href="{% url 'sector_detail' sector.id %}"
-                        class="flex-1 sm:flex-none bg-slate-300 hover:bg-slate-200 active:bg-slate-400 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 shadow-sm">
+                        class="w-max bg-slate-300 hover:bg-slate-200 active:bg-slate-400 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 shadow-sm">
                         <i class="fa-solid fa-rotate-left"></i>
                         <span>Reset</span>
                     </a>
@@ -238,8 +238,7 @@
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 {% if lectura.temperatura %}
-                                <span
-                                    class="text-red-600 font-bold">{{lectura.temperatura.valor|floatformat:1}}°C</span>
+                                <span class="text-red-600 font-bold">{{lectura.temperatura.valor|floatformat:1}}°C</span>
                                 {% else %}
                                 <span class="text-gray-300 text-xs">Sin datos</span>
                                 {% endif %}
@@ -715,9 +714,9 @@ function borrarImagen(nombre) {
     const zonasDelSector = [
         {% for zona in sector.zonas.all %}
     {
-        id: {{ zona.id } },
+        id: {{ zona.id }},
         nombre: "{{ zona.nombre|escapejs }}",
-            geopoligono: { { zona.geopoligono | safe } }
+            geopoligono: {{ zona.geopoligono | safe }}
     } {% if not forloop.last %}, {% endif %}
     {% endfor %}
     ];
