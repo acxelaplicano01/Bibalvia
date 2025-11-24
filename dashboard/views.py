@@ -10,12 +10,13 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.conf import settings
 from django.shortcuts import render, redirect
-from dashboard.models import Sector, Zona
+from dashboard.models import Sector, Zona, Imagen
 from django.contrib import messages
 from django.core.files.storage import FileSystemStorage
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta
 from django.db.models import F
+from django.core.files.storage import default_storage
 
 # Configuración serial
 SERIAL_PORT = '/dev/ttyACM0'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
@@ -311,14 +312,21 @@ def sincronizar_zona_a_nube(zona):
 def upload_imagen_sector(request):
     if request.method == 'POST':
         imagen = request.FILES['imagen']
-        
-        # No se necesita porque en el nombre de la imagen va el id
-        # sector_id = request.POST.get('sector_id')
+        sector_id = request.POST.get('sector_id')
+        sector = Sector.objects.get(id=sector_id)
 
-        fs = FileSystemStorage(location='media/sectores/')
-        filename = fs.save(imagen.name, imagen)
+        # Guardar en S3
+        filename = default_storage.save(imagen.name, imagen)
+        url = default_storage.url(filename)
 
-        return JsonResponse({'ok': True, 'filename': filename})
+        # Guardar registro en BD
+        img_obj = Imagen.objects.create(
+            sector=sector,
+            url=url,
+            nombre=imagen.name
+        )
+
+        return JsonResponse({'ok': True, 'filename': filename, 'url': url})
 
 @login_required  
 @csrf_exempt
@@ -327,13 +335,17 @@ def borrar_imagen_sector(request):
         import json
         data = json.loads(request.body)
         nombre = data.get('nombre')
+        sector_id = data.get('sector_id')
 
-        path = os.path.join(settings.MEDIA_ROOT, 'sectores', nombre)
-        if os.path.exists(path):
-            os.remove(path)
+        try:
+            img = Imagen.objects.get(nombre=nombre, sector_id=sector_id)
+            if default_storage.exists(img.nombre):
+                default_storage.delete(img.nombre)
+            img.delete()
             return JsonResponse({'ok': True})
+        except Imagen.DoesNotExist:
+            return JsonResponse({'ok': False})
 
-    return JsonResponse({'ok': False})
 
 
 def conectar_arduino():

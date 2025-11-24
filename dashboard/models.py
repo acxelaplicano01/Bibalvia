@@ -29,6 +29,14 @@ class Sector(models.Model):
     def __str__(self):
         return f"Sector {self.id} ({self.latitud}, {self.longitud})"
 
+class Imagen(models.Model):
+    sector = models.ForeignKey(Sector, on_delete=models.CASCADE, related_name='imagenes')
+    url = models.URLField()
+    nombre = models.CharField(max_length=200)  # opcional, para identificar la imagen
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.nombre} ({self.sector.nombre})"
 
 class Bivalvo(models.Model):
     tipo = models.CharField(max_length=100, db_index=True)
@@ -40,7 +48,6 @@ class Bivalvo(models.Model):
     
     def __str__(self):
         return self.tipo
-
 
 class HistorialTemperatura(models.Model):
     sector = models.ForeignKey(
@@ -66,7 +73,6 @@ class HistorialTemperatura(models.Model):
     def __str__(self):
         return f"{self.valor}°C - {self.marca_tiempo}"
     
-
 class HistorialOxigeno(models.Model):
     sector = models.ForeignKey(
         Sector, 
@@ -91,7 +97,6 @@ class HistorialOxigeno(models.Model):
     def __str__(self):
         return f"{self.valor}°C - {self.marca_tiempo}"
 
-
 class HistorialSalinidad(models.Model):
     sector = models.ForeignKey(
         Sector, 
@@ -111,7 +116,6 @@ class HistorialSalinidad(models.Model):
     
     def __str__(self):
         return f"{self.valor} PSU - {self.marca_tiempo}"
-
 
 class HistorialPh(models.Model):
     sector = models.ForeignKey(
@@ -137,7 +141,6 @@ class HistorialPh(models.Model):
     def __str__(self):
         return f"pH {self.valor} - {self.marca_tiempo}"
 
-
 class HistorialTurbidez(models.Model):
     sector = models.ForeignKey(
         Sector, 
@@ -157,7 +160,6 @@ class HistorialTurbidez(models.Model):
     
     def __str__(self):
         return f"{self.valor} NTU - {self.marca_tiempo}"
-
 
 class HistorialHumedad(models.Model):
     sector = models.ForeignKey(
@@ -182,7 +184,6 @@ class HistorialHumedad(models.Model):
     
     def __str__(self):
         return f"{self.valor}% - {self.marca_tiempo}"
-
 
 class HistorialClasificacion(models.Model):
     sector = models.ForeignKey(

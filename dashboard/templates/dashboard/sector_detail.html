@@ -238,8 +238,8 @@
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 {% if lectura.temperatura %}
-                                <span class="text-red-600 font-bold">{{
-                                    lectura.temperatura.valor|floatformat:1}}°C</span>
+                                <span
+                                    class="text-red-600 font-bold">{{lectura.temperatura.valor|floatformat:1}}°C</span>
                                 {% else %}
                                 <span class="text-gray-300 text-xs">Sin datos</span>
                                 {% endif %}
@@ -339,12 +339,12 @@
 
                     <!-- GRID DE IMÁGENES -->
                     <div id="previewGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4 overflow-auto h-64">
-                        {% for img in imagenes %}
+                        {% for img in sector.imagenes.all %}
                         <div class="relative group">
-                            <img src="{{ MEDIA_URL }}sectores/{{ img }}" class="rounded-lg object-cover w-full h-28">
+                            <img src="{{ img.url }}" class="rounded-lg object-cover w-full h-28">
 
                             <!-- BOTÓN BORRAR -->
-                            <button onclick="borrarImagen('{{ img }}')"
+                            <button onclick="borrarImagen('{{ img.nombre }}')"
                                 class="absolute top-1 right-1 px-2 py-1 bg-red-600 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition">
                                 <i class="fa-solid fa-trash"></i>
                             </button>
@@ -503,59 +503,59 @@
 </script>
 
 <script>
-    let contador = {{ siguiente_num }};
-    const sectorID = {{ sector.id }};     // viene de Django
-    const input = document.getElementById('uploadImg');
-    const grid = document.getElementById('previewGrid');
+let contador = {{ siguiente_num }};
+const sectorID = {{ sector.id }};
+const input = document.getElementById('uploadImg');
+const grid = document.getElementById('previewGrid');
 
-    input.addEventListener('change', () => {
-        const file = input.files[0];
-        if (!file) return;
+input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (!file) return;
 
-        // --- PREVIEW EN GRID ---
-        const reader = new FileReader();
-        reader.onload = e => {
+    const formData = new FormData();
+    const extension = file.name.split('.').pop();
+    const newName = `sector${sectorID}-imagen${contador}.${extension}`;
+    formData.append('imagen', file, newName);
+    formData.append('sector_id', sectorID);
+
+    fetch("{% url 'upload_imagen_sector' %}", {
+        method: "POST",
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.ok) {
+            // --- PREVIEW DESDE S3 ---
             const img = document.createElement('img');
-            img.src = e.target.result;
+            img.src = data.url;  // URL devuelta por el backend (S3)
             img.className = "rounded-lg shadow-sm object-cover w-full h-28";
             grid.appendChild(img);
-        };
-        reader.readAsDataURL(file);
+            contador++;
+        }
+    })
+    .catch(err => console.error('Error subiendo imagen:', err));
+});
 
-        // --- ENVÍO AL BACKEND ---
-        const formData = new FormData();
-        const extension = file.name.split('.').pop();
-        const newName = `sector${sectorID}-imagen${contador}.${extension}`;
-        formData.append('imagen', file, newName);
-        formData.append('sector_id', sectorID);
-
-        fetch("{% url 'upload_imagen_sector' %}", {
-            method: "POST",
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: formData
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.ok) {
-                    location.reload(); // Recarga para actualizar siguiente_num
-                }
-            });
-        contador++;
-    });
-
-    function borrarImagen(nombre) {
-        fetch("{% url 'borrar_imagen_sector' %}", {
-            method: "POST",
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ nombre: nombre })
-        }).then(() => location.reload());
-    }
+function borrarImagen(nombre) {
+    fetch("{% url 'borrar_imagen_sector' %}", {
+        method: "POST",
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ nombre: nombre })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.ok) location.reload();
+    })
+    .catch(err => console.error('Error borrando imagen:', err));
+}
 </script>
+
 <script>
 
     let reading = false;
@@ -715,7 +715,7 @@
     const zonasDelSector = [
         {% for zona in sector.zonas.all %}
     {
-        id: { { zona.id } },
+        id: {{ zona.id } },
         nombre: "{{ zona.nombre|escapejs }}",
             geopoligono: { { zona.geopoligono | safe } }
     } {% if not forloop.last %}, {% endif %}
