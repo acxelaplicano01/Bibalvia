@@ -16,6 +16,7 @@ db.sqlite3-journal
 
 # Variables de entorno
 .env
+.env.api
 .env.local
 .env.cloud
 
