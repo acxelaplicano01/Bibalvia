@@ -191,7 +191,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # SECURITY SETTINGS (solo para producción)
 # ============================================================================
 
-if not DEBUG:
+if not DEBUG and IS_CLOUD:
     # HTTPS enforcement
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
