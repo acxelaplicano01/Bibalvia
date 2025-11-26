@@ -24,7 +24,9 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 # Leer ALLOWED_HOSTS
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
-
+CSRF_TRUSTED_ORIGINS = [
+    'https://bivalvia-cloud.onrender.com',
+]
 # Configuración de entorno
 ENVIRONMENT = config('ENVIRONMENT', default='local')
 IS_LOCAL = ENVIRONMENT == 'local'
