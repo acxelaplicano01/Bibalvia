@@ -1,10 +1,25 @@
 {% extends "base.html" %}
+{% load static %}
 {% block content %}
+
+<!-- Variables para WebSocket -->
+<script>
+    const sectorId = {{ sector.id }};
+    {% if IS_CLOUD %}
+    const IS_CLOUD = true;
+    {% else %}
+    const IS_LOCAL = true;
+    {% endif %}
+</script>
 
 <div class="size-full flex-1 overflow-auto">
 
-    <section
-        class="mx-4 mt-4 flex items-center justify-center p-4 border bg-white border-gray-300 rounded-lg shadow-sm text-lg font-semibold">
+    <!-- Indicador de conexión WebSocket (solo CLOUD) -->
+    {% if IS_CLOUD %}
+    <div id="ws-status" class="ws-status disconnected">🔴 Desconectado</div>
+    {% endif %}
+
+    <section class="mx-4 mt-4 flex items-center justify-center p-4 border bg-white border-gray-300 rounded-lg shadow-sm text-lg font-semibold">
         <p>Datos del sector: {{ sector.nombre_sector }}</p>
     </section>
 
@@ -12,7 +27,6 @@
     <section class="flex gap-4 m-4 flex-col sm:flex-row">
 
         <article class="flex flex-col p-4 border bg-white border-gray-300 rounded-lg shadow-sm relative sm:w-1/2">
-            {# <h2 class="text-lg font-semibold w-full text-center">Ubicación</h2> #}
             <div class="flex flex-col text-sm mb-4 gap-1">
                 <p class="text-gray-700"><b>Latitud:</b> {{ sector.latitud }} </p>
                 <p class="text-gray-700"><b>Longitud:</b> {{ sector.longitud }} </p>
@@ -46,81 +60,89 @@
             </button>
         </article>
 
-
         <div class="w-full sm:w-1/2 flex flex-col gap-4 h-full">
             <div class="flex gap-4">
-                <article
-                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                <article class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
                     <i class="fa-solid fa-droplet text-blue-500 fa-2x"></i>
                     <div class="flex flex-col align-items-center">
-                        <span class="text-xl font-bold">--</span>
+                        <span class="text-xl font-bold" data-sensor="humedad">
+                            {% if ultima_humedad %}{{ ultima_humedad.valor }}%{% else %}--{% endif %}
+                        </span>
                         <h3 class="text-sm">Humedad</h3>
                     </div>
                 </article>
-                <article
-                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                <article class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
                     <i class="fa-solid fa-temperature-half text-red-600 fa-2x"></i>
                     <div class="flex flex-col align-items-center">
-                        <span class="text-xl font-bold">--</span>
+                        <span class="text-xl font-bold" data-sensor="temperatura">
+                            {% if ultima_temperatura %}{{ ultima_temperatura.valor }}°C{% else %}--{% endif %}
+                        </span>
                         <h3 class="text-sm">Temperatura</h3>
                     </div>
                 </article>
             </div>
             <div class="flex gap-4">
-                <article
-                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                <article class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
                     <i class="fa-solid fa-water text-amber-500 fa-2x"></i>
                     <div class="flex flex-col align-items-center">
-                        <span class="text-xl font-bold">--</span>
+                        <span class="text-xl font-bold" data-sensor="turbidez">
+                            {% if ultima_turbidez %}{{ ultima_turbidez.valor }} NTU{% else %}--{% endif %}
+                        </span>
                         <h3 class="text-sm">Turbidez</h3>
                     </div>
                 </article>
-                <article
-                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                <article class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
                     <i class="fa-solid fa-vial text-green-600 fa-2x"></i>
                     <div class="flex flex-col align-items-center">
-                        <span class="text-xl font-bold" id="valor-ph">--</span>
+                        <span class="text-xl font-bold" data-sensor="ph" id="valor-ph">
+                            {% if ultima_ph %}{{ ultima_ph.valor }}{% else %}--{% endif %}
+                        </span>
                         <h3 class="text-sm">Acidez (pH)</h3>
                     </div>
                 </article>
             </div>
             <div class="flex gap-4">
-                <article
-                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                <article class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
                     <i class="fa-solid fa-flask text-rose-300 fa-2x"></i>
                     <div class="flex flex-col align-items-center">
-                        <span class="text-xl font-bold">--</span>
+                        <span class="text-xl font-bold" data-sensor="salinidad">
+                            {% if ultima_salinidad %}{{ ultima_salinidad.valor }} PSU{% else %}--{% endif %}
+                        </span>
                         <h3 class="text-sm">Salinidad</h3>
                     </div>
                 </article>
-                <article
-                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                <article class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
                     <i class="fa-solid fa-lungs text-cyan-600 fa-2x"></i>
                     <div class="flex flex-col align-items-center">
-                        <span class="text-xl font-bold">--</span>
+                        <span class="text-xl font-bold" data-sensor="oxigeno">--</span>
                         <h3 class="text-sm">Oxígeno</h3>
                     </div>
                 </article>
             </div>
 
-
             {% if IS_LOCAL %}
-            <button type="button" id="leerDatos" onclick="leerDatos()"
-                class="bg-green-700 text-white flex gap-4 px-4 py-6 rounded-lg shadow-md h-max w-full justify-center items-center active:scale-98 hover:bg-green-600 transition-all">
-                <i class="fa-solid fa-circle-play fa-2x"></i>
-                <div class="flex flex-col align-items-center">
-                    <span class="text-xl font-semibold">Leer Sensores</span>
-                </div>
-            </button>
+            <div class="flex gap-4">
+                <button class="bg-green-700 text-white flex gap-4 px-4 py-6 rounded-lg shadow-md h-max w-full justify-center items-center active:scale-98 hover:bg-green-600 transition-all">
+                    <i class="fa-solid fa-circle-play fa-2x"></i>
+                    <span class="text-xl font-semibold">Iniciar Sensores</span>
+                </button>
+                <button type="button" id="leerDatos" onclick="leerDatos()"
+                    class="bg-amber-600 text-white flex gap-4 px-4 py-6 rounded-lg shadow-md h-max w-full justify-center items-center active:scale-98 hover:bg-amber-500 transition-all">
+                    <i class="fa-solid fa-circle-play fa-2x"></i>
+                    <div class="flex flex-col align-items-center">
+                        <span class="text-xl font-semibold">Iniciar grabación</span>
+                    </div>
+                </button>
+            </div>
             {% else %}
-            <div
-                class="bg-gray-100 text-gray-500 flex gap-4 px-4 py-6 rounded-lg shadow-md h-max w-full justify-center items-center">
+            <div class="bg-gray-100 text-gray-500 flex gap-4 px-4 py-6 rounded-lg shadow-md h-max w-full justify-center items-center">
                 <i class="fa-solid fa-lock fa-2x"></i>
                 <div class="flex flex-col align-items-center">
                     <span class="text-xl font-semibold">Lectura de Sensores Deshabilitada en la Nube</span>
                 </div>
             </div>
             {% endif %}
+        </div>
     </section>
 
     {# Gráfico #}
@@ -141,9 +163,8 @@
         </div>
     </section>
 
-    <!-- Tabla de historial con filtros integrados -->
+    <!-- Tabla de historial -->
     <section class="bg-white border border-gray-300 rounded-lg m-4 p-4">
-        <!-- Header con título -->
         <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
             <h3 class="font-semibold text-lg flex items-center gap-2">
                 Historial de Lecturas
@@ -153,7 +174,7 @@
             </span>
         </div>
 
-        <!-- Filtros de fechas -->
+        <!-- Filtros -->
         <form method="GET" class="mb-4 pb-4 border-b border-gray-200">
             <div class="flex flex-col gap-3 items-start">
                 <div class="flex flex-col sm:flex-row gap-4">
@@ -196,8 +217,7 @@
         <div class="overflow-x-auto rounded-lg border border-gray-200">
             <div class="overflow-y-auto max-h-[60vh]">
                 <table class="w-full min-w-full text-sm">
-                    <thead
-                        class="bg-linear-to-r from-gray-50 to-gray-100 text-xs uppercase text-gray-600 sticky top-0 z-10">
+                    <thead class="bg-linear-to-r from-gray-50 to-gray-100 text-xs uppercase text-gray-600 sticky top-0 z-10">
                         <tr>
                             <th class="px-4 py-3 text-left font-semibold border-b-2 border-gray-300">
                                 <div class="flex items-center gap-2">
@@ -242,8 +262,7 @@
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 {% if lectura.temperatura %}
-                                <span
-                                    class="text-red-600 font-bold">{{lectura.temperatura.valor|floatformat:1}}°C</span>
+                                <span class="text-red-600 font-bold">{{lectura.temperatura.valor|floatformat:1}}°C</span>
                                 {% else %}
                                 <span class="text-gray-300 text-xs">Sin datos</span>
                                 {% endif %}
@@ -281,8 +300,7 @@
                                     </div>
                                     <div>
                                         <p class="text-lg font-semibold text-gray-600 mb-1">No hay datos disponibles</p>
-                                        <p class="text-sm text-gray-500">Intenta ajustar el rango de fechas o espera a
-                                            que se registren nuevas lecturas</p>
+                                        <p class="text-sm text-gray-500">Intenta ajustar el rango de fechas o espera a que se registren nuevas lecturas</p>
                                     </div>
                                 </div>
                             </td>
@@ -293,23 +311,22 @@
             </div>
         </div>
 
-        <!-- Footer con información -->
-        <div
-            class="mt-4 pt-3 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-gray-500">
+        <!-- Footer -->
+        <div class="mt-4 pt-3 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-gray-500">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-info-circle text-blue-500"></i>
                 <span>Mostrando máximo 100 registros más recientes</span>
             </div>
+            {% if lecturas_combinadas %}
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-clock text-gray-400"></i>
                 <span>Última actualización: {{ lecturas_combinadas.0.marca_tiempo|date:"d/m/Y H:i" }}</span>
             </div>
+            {% endif %}
         </div>
     </section>
 
-
     {% if IS_LOCAL %}
-
     <section class="flex gap-4 mx-4 mb-4 flex-col sm:flex-row items-stretch">
         <div class="w-full sm:w-1/2 flex">
             <div class="bg-white border border-gray-300 rounded-lg shadow-sm flex-1">
@@ -320,7 +337,6 @@
                         ¡Dashboard Iniciado Correctamente! <br>
                         Conectando con la base de datos... <br>
                     </div>
-
                     <div class="mt-3 flex items-center gap-2 text-gray-500 text-xs">
                         <i class="fa-solid fa-circle-info"></i>
                         <span>Últimos eventos del sistema</span>
@@ -333,23 +349,14 @@
             <div class="bg-white border border-gray-300 rounded-lg shadow-sm flex-1">
                 <div class="p-4 flex flex-col h-full">
                     <h6 class="font-semibold mb-3">Anexos</h6>
-
-                    <!-- INPUT -->
-                    {% if IS_LOCAL %}
-                    <label
-                        class="border border-dashed border-gray-400 rounded-lg p-4 text-center text-sm cursor-pointer hover:bg-gray-50">
+                    <label class="border border-dashed border-gray-400 rounded-lg p-4 text-center text-sm cursor-pointer hover:bg-gray-50">
                         <input type="file" accept="image/*" class="hidden" id="uploadImg">
                         Haz clic para subir una imagen
                     </label>
-                    {% endif %}
-
-                    <!-- GRID DE IMÁGENES -->
                     <div id="previewGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4 overflow-auto h-64">
                         {% for img in imagenes %}
                         <div class="relative group">
                             <img src="{{ MEDIA_URL }}sectores/{{ img }}" class="rounded-lg object-cover w-full h-28">
-
-                            <!-- BOTÓN BORRAR -->
                             <button onclick="borrarImagen('{{ img }}')"
                                 class="absolute top-1 right-1 px-2 py-1 bg-red-600 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition">
                                 <i class="fa-solid fa-trash"></i>
@@ -365,15 +372,11 @@
 
 </div>
 
-{# Gráfico #}
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<!-- Debug -->
+
+<!-- Chart Initialization -->
 <script>
-    console.log('Datos del chart:', {{ chart_data_json| safe }});
-</script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-    // Buffer de datos para el gráfico
     const MAX_POINTS = 20;
 
     function nowLabel() {
@@ -381,7 +384,6 @@
         return now.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     }
 
-    // SOLUCIÓN: Declarar el buffer solo una vez
     const buffer = {
         labels: [],
         temperatura: [],
@@ -391,8 +393,7 @@
     };
 
     {% if IS_CLOUD %}
-    // Cargar datos iniciales desde Django
-    const lecturasChart = {{ chart_data_json| safe }};
+    const lecturasChart = {{ chart_data_json|safe }};
     if (lecturasChart && lecturasChart.length > 0) {
         lecturasChart.forEach(l => {
             buffer.labels.push(l.marca_tiempo);
@@ -402,7 +403,6 @@
             buffer.ph.push(Number(l.ph));
         });
     } else {
-        // Si no hay datos, inicializar con valores vacíos
         for (let i = 0; i < MAX_POINTS; i++) {
             buffer.labels.push('');
             buffer.temperatura.push(0);
@@ -413,9 +413,7 @@
     }
     {% endif %}
 
-    // Inicializar Chart.js
     const ctx = document.getElementById('sensorChart').getContext('2d');
-
     const sensorChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -525,7 +523,6 @@
         buffer.humedad.push(Number(datos.humedad?.toFixed(1) || 0));
         buffer.ph.push(Number(datos.ph?.toFixed(2) || 7));
 
-        // Mantener solo MAX_POINTS
         if (buffer.labels.length > MAX_POINTS) {
             buffer.labels.shift();
             buffer.temperatura.shift();
@@ -534,70 +531,18 @@
             buffer.ph.shift();
         }
 
-        // Actualizar gráfico
         sensorChart.update('none');
     }
 </script>
-<!-- Debug -->
+
+<!-- WebSocket Client (solo CLOUD) -->
+{% if IS_CLOUD %}
+<script src="{% static 'js/dashboard_websocket.js' %}"></script>
+{% endif %}
+
+<!-- SSE para LOCAL -->
+{% if IS_LOCAL %}
 <script>
-    console.log('Datos del chart:', {{ chart_data_json| safe }});
-</script>
-<script>
-    let contador = {{ siguiente_num }};
-    const sectorID = {{ sector.id }};     // viene de Django
-    const input = document.getElementById('uploadImg');
-    const grid = document.getElementById('previewGrid');
-
-    input.addEventListener('change', () => {
-        const file = input.files[0];
-        if (!file) return;
-
-        // --- PREVIEW EN GRID ---
-        const reader = new FileReader();
-        reader.onload = e => {
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            img.className = "rounded-lg shadow-sm object-cover w-full h-28";
-            grid.appendChild(img);
-        };
-        reader.readAsDataURL(file);
-
-        // --- ENVÍO AL BACKEND ---
-        const formData = new FormData();
-        const extension = file.name.split('.').pop();
-        const newName = `sector${sectorID}-imagen${contador}.${extension}`;
-        formData.append('imagen', file, newName);
-        formData.append('sector_id', sectorID);
-
-        fetch("{% url 'upload_imagen_sector' %}", {
-            method: "POST",
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: formData
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.ok) {
-                    location.reload(); // Recarga para actualizar siguiente_num
-                }
-            });
-        contador++;
-    });
-
-    function borrarImagen(nombre) {
-        fetch("{% url 'borrar_imagen_sector' %}", {
-            method: "POST",
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ nombre: nombre })
-        }).then(() => location.reload());
-    }
-</script>
-<script>
-
     let reading = false;
     let eventSource = null;
 
@@ -606,65 +551,53 @@
 
         if (!reading) {
             btn.innerHTML = `
-            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
-            <div class="flex align-items-center">
-                <span class="text-xl font-semibold">Detener</span>
-            </div>
-        `;
-            btn.classList.remove('bg-green-700', 'hover:bg-green-600');
+                <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                <div class="flex align-items-center">
+                    <span class="text-xl font-semibold">Detener</span>
+                </div>
+            `;
+            btn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
             btn.classList.add('bg-blue-700', 'hover:bg-blue-600');
 
             fetch("{% url 'iniciar_lectura_sensores' %}", {
                 method: "POST",
                 headers: { 'X-CSRFToken': '{{ csrf_token }}' }
             })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        alert(`Error: ${data.error}\nPuerto: ${data.puerto}`);
-                        leerDatos();
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(`Error: ${data.error}`);
+                    leerDatos();
+                    return;
+                }
+
+                eventSource = new EventSource("{% url 'stream_sensores' %}?sector_id={{ sector.id }}");
+
+                eventSource.onmessage = function (event) {
+                    const datos = JSON.parse(event.data);
+                    if (datos.status === 'cerrado') {
+                        eventSource.close();
                         return;
                     }
-
-                    eventSource = new EventSource("{% url 'stream_sensores' %}?sector_id={{ sector.id }}");
-
-                    eventSource.onmessage = function (event) {
-                        const datos = JSON.parse(event.data);
-
-                        if (datos.status === 'cerrado') {
-                            eventSource.close();
-                            return;
-                        }
-
-                        if (datos.error) {
-                            console.error('Error:', datos.error);
-                            return;
-                        }
-
+                    if (!datos.error) {
                         actualizarValores(datos);
-                    };
+                    }
+                };
 
-                    eventSource.onerror = function (error) {
-                        console.error('Error EventSource:', error);
-                        eventSource.close();
-                        leerDatos();
-                    };
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error al iniciar lectura');
+                eventSource.onerror = function () {
+                    eventSource.close();
                     leerDatos();
-                });
-
+                };
+            });
         } else {
             btn.innerHTML = `
-            <i class="fa-solid fa-circle-play fa-2x"></i>
-            <div class="flex flex-col align-items-center">
-                <span class="text-xl font-semibold">Leer Sensores</span>
-            </div>
-        `;
+                <i class="fa-solid fa-circle-play fa-2x"></i>
+                <div class="flex flex-col align-items-center">
+                    <span class="text-xl font-semibold">Iniciar grabación</span>
+                </div>
+            `;
             btn.classList.remove('bg-blue-700', 'hover:bg-blue-600');
-            btn.classList.add('bg-green-700', 'hover:bg-green-600');
+            btn.classList.add('bg-amber-600', 'hover:bg-amber-500');
 
             if (eventSource) {
                 eventSource.close();
@@ -683,37 +616,36 @@
     function actualizarValores(datos) {
         // Temperatura
         if (datos.temperatura !== undefined && datos.temperatura !== -999) {
-            const tempElement = document.querySelector('.fa-temperature-half').nextElementSibling.querySelector('.font-bold');
-            tempElement.textContent = `${datos.temperatura.toFixed(1)} C°`;
-        }
-
-        // Turbidez
-        if (datos.turbidez !== undefined) {
-            const turbElement = document.querySelector('.fa-water').nextElementSibling.querySelector('.font-bold');
-            turbElement.textContent = datos.turbidez.toFixed(0);
+            const tempElement = document.querySelector('[data-sensor="temperatura"]');
+            if (tempElement) tempElement.textContent = `${datos.temperatura.toFixed(1)}°C`;
         }
 
         // Humedad
         if (datos.humedad !== undefined) {
-            const humedadElement = document.querySelector('.fa-droplet').nextElementSibling.querySelector('.font-bold');
-            humedadElement.textContent = `${datos.humedad.toFixed(1)}%`;
+            const humElement = document.querySelector('[data-sensor="humedad"]');
+            if (humElement) humElement.textContent = `${datos.humedad.toFixed(1)}%`;
         }
 
-        // pH ← NUEVO
-        if (datos.ph !== undefined) {
-            const phElement = document.getElementById('valor-ph');
-            phElement.textContent = datos.ph.toFixed(2);
+        // Turbidez
+        if (datos.turbidez !== undefined) {
+            const turbElement = document.querySelector('[data-sensor="turbidez"]');
+            if (turbElement) turbElement.textContent = `${datos.turbidez.toFixed(0)} NTU`;
+        }
 
-            // Colorear según el pH
-            if (datos.ph < 6.5) {
-                phElement.classList.add('text-red-600');
-                phElement.classList.remove('text-green-600', 'text-blue-600');
-            } else if (datos.ph > 8.5) {
-                phElement.classList.add('text-blue-600');
-                phElement.classList.remove('text-red-600', 'text-green-600');
-            } else {
-                phElement.classList.add('text-green-600');
-                phElement.classList.remove('text-red-600', 'text-blue-600');
+        // pH
+        if (datos.ph !== undefined) {
+            const phElement = document.querySelector('[data-sensor="ph"]');
+            if (phElement) {
+                phElement.textContent = datos.ph.toFixed(2);
+                
+                // Color según pH
+                if (datos.ph < 6.5) {
+                    phElement.className = 'text-xl font-bold text-red-600';
+                } else if (datos.ph > 8.5) {
+                    phElement.className = 'text-xl font-bold text-blue-600';
+                } else {
+                    phElement.className = 'text-xl font-bold text-green-600';
+                }
             }
         }
 
@@ -721,17 +653,19 @@
         pushDataPoint(datos);
 
         // Animación
-        document.querySelectorAll('.fa-temperature-half, .fa-water, .fa-droplet, .fa-vial').forEach(icon => {
-            const card = icon.closest('article');
+        document.querySelectorAll('[data-sensor]').forEach(el => {
+            const card = el.closest('article');
             card.classList.add('ring-2', 'ring-green-400');
             setTimeout(() => card.classList.remove('ring-2', 'ring-green-400'), 500);
         });
 
         // Log
         const logElement = document.querySelector('.bg-slate-900');
-        const timestamp = new Date().toLocaleTimeString();
-        logElement.innerHTML += `[${timestamp}] Temp: ${datos.temperatura?.toFixed(1)}°C | Turbidez: ${datos.turbidez?.toFixed(0)} NTU | Humedad: ${datos.humedad?.toFixed(1)}% | pH: ${datos.ph?.toFixed(2)}<br>`;
-        logElement.scrollTop = logElement.scrollHeight;
+        if (logElement) {
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] Temp: ${datos.temperatura?.toFixed(1)}°C | Turbidez: ${datos.turbidez?.toFixed(0)} NTU | Humedad: ${datos.humedad?.toFixed(1)}% | pH: ${datos.ph?.toFixed(2)}<br>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
     }
 
     window.addEventListener('beforeunload', function () {
@@ -743,25 +677,73 @@
             });
         }
     });
-
 </script>
 
+<!-- Image Upload (LOCAL only) -->
+<script>
+    let contador = {{ siguiente_num }};
+    const sectorID = {{ sector.id }};
+    const input = document.getElementById('uploadImg');
+    const grid = document.getElementById('previewGrid');
+
+    input.addEventListener('change', () => {
+        const file = input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.className = "rounded-lg shadow-sm object-cover w-full h-28";
+            grid.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+
+        const formData = new FormData();
+        const extension = file.name.split('.').pop();
+        const newName = `sector${sectorID}-imagen${contador}.${extension}`;
+        formData.append('imagen', file, newName);
+        formData.append('sector_id', sectorID);
+
+        fetch("{% url 'upload_imagen_sector' %}", {
+            method: "POST",
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.ok) location.reload();
+        });
+        contador++;
+    });
+
+    function borrarImagen(nombre) {
+        fetch("{% url 'borrar_imagen_sector' %}", {
+            method: "POST",
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ nombre: nombre })
+        }).then(() => location.reload());
+    }
+</script>
+{% endif %}
+
+<!-- Mapa -->
 <script>
     const lat = {{ sector.latitud }};
     const lng = {{ sector.longitud }};
 
-    /* prettier-ignore */
-    // Zonas del sector desde Django
     const zonasDelSector = [
         {% for zona in sector.zonas.all %}
-    {
-        id: { { zona.id } },
-        nombre: "{{ zona.nombre|escapejs }}",
-            geopoligono: { { zona.geopoligono | safe } }
-    } {% if not forloop.last %}, {% endif %}
-    {% endfor %}
+        {
+            id: {{ zona.id }},
+            nombre: "{{ zona.nombre|escapejs }}",
+            geopoligono: {{ zona.geopoligono|safe }}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
     ];
-
 
     const map = L.map('map', {
         center: [lat, lng],
@@ -775,7 +757,6 @@
         zoomControl: true
     });
 
-    // Capas de tiles
     const openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap contributors'
@@ -791,7 +772,6 @@
 
     document.getElementById('toggleLayer').addEventListener('click', function () {
         const layerNameSpan = document.getElementById('layerName');
-
         if (currentLayer === openStreetMap) {
             map.removeLayer(openStreetMap);
             esriSatellite.addTo(map);
@@ -805,7 +785,6 @@
         }
     });
 
-    // Dibujar zonas en el mapa
     zonasDelSector.forEach(zona => {
         const coords = zona.geopoligono.coordinates[0].map(c => [c[1], c[0]]);
         const poligono = L.polygon(coords, {
@@ -815,7 +794,6 @@
             weight: 2
         }).addTo(map);
 
-        // Tooltip al pasar el mouse
         poligono.bindTooltip(zona.nombre, {
             permanent: false,
             direction: 'center',
@@ -823,11 +801,7 @@
         });
     });
 
-    // Marcador del sector
-    const marker = L.marker([lat, lng], {
-        draggable: false
-    }).addTo(map);
-
+    const marker = L.marker([lat, lng]).addTo(map);
     marker.bindPopup(`
         <div class="text-center text-xs">
             <strong>Sector {{ sector.id }}</strong><br>
@@ -844,7 +818,6 @@
         </div>
     `);
 
-    // Ajustar vista del mapa para incluir zonas si existen
     if (zonasDelSector.length > 0) {
         const bounds = L.latLngBounds([[lat, lng]]);
         zonasDelSector.forEach(zona => {

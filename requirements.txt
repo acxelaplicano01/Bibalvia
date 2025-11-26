@@ -1,14 +1,59 @@
-# --- CLOUD & LOCAL ---
+# ============================================================================
+# DEPENDENCIAS COMUNES (Local y Cloud)
+# ============================================================================
+
+# Django
 Django==5.2.8
 djangorestframework==3.16.1
+
+# Configuración y variables de entorno
 python-decouple==3.8
+
+# HTTP Requests (para sincronización REST de sectores/zonas)
 requests==2.32.5
 
-# --- CLOUD (Render / PostgreSQL) ---
+# ============================================================================
+# DEPENDENCIAS CLOUD (Render / PostgreSQL / WebSockets)
+# ============================================================================
+
+# Base de datos
 dj-database-url==3.0.1
-gunicorn==23.0.0
-whitenoise==6.11.0
 psycopg2-binary==2.9.11
 
-# --- LOCAL (RASPBERRY PI) ---
+# Servidor web
+gunicorn==23.0.0
+whitenoise==6.11.0
+
+# Django Channels y WebSockets
+channels==4.2.0
+daphne==4.1.2
+
+# Redis para Channel Layer
+channels-redis==4.2.1
+redis==5.2.1
+
+# ============================================================================
+# DEPENDENCIAS LOCAL (Raspberry Pi / Arduino)
+# ============================================================================
+
+# Serial (para comunicación con Arduino)
 pyserial==3.5
+
+# Cliente WebSocket (para enviar datos al cloud)
+websockets==15.0
+
+# ============================================================================
+# NOTAS
+# ============================================================================
+
+# channels: Framework de Django para WebSockets y protocolos asíncronos
+# daphne: Servidor ASGI HTTP/WebSocket para Django Channels
+# channels-redis: Backend de Redis para Channels (necesario en producción)
+# redis: Cliente de Redis para Python
+# websockets: Cliente/servidor WebSocket puro (usado en LOCAL para enviar al cloud)
+# pyserial: Solo necesario en LOCAL para leer Arduino
+
+# Para desarrollo local, puedes instalar todo:
+# pip install -r requirements.txt
+
+# Para cloud (Render), todo se instala automáticamente excepto pyserial que no se usa

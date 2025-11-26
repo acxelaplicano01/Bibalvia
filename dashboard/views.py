@@ -3,6 +3,7 @@ import json
 import re
 import serial
 import time
+import asyncio
 import requests
 from django.utils import timezone
 from django.http import JsonResponse, StreamingHttpResponse
@@ -12,11 +13,29 @@ from django.conf import settings
 from django.shortcuts import render, redirect
 from dashboard.models import Sector, Zona
 from django.contrib import messages
-from django.core.files.storage import FileSystemStorage
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta
-from django.db.models import F
-from django.core.files.storage import default_storage
+from django.core.files.storage import FileSystemStorage
+
+# Importar cliente WebSocket solo en LOCAL
+try:
+    if settings.IS_LOCAL:
+        from dashboard.ws_client import sensor_ws_client, enviar_a_nube_ws_sync
+    else:
+        sensor_ws_client = None
+        enviar_a_nube_ws_sync = None
+except (ImportError, AttributeError):
+    sensor_ws_client = None
+    enviar_a_nube_ws_sync = None
+
+# Importar cliente WebSocket solo en LOCAL
+if settings.IS_LOCAL:
+    try:
+        from dashboard.ws_client import sensor_ws_client, enviar_a_nube_ws_sync
+    except ImportError:
+        print("⚠️ ws_client no disponible")
+        sensor_ws_client = None
+        enviar_a_nube_ws_sync = None
 
 # Configuración serial
 SERIAL_PORT = '/dev/ttyACM0'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
@@ -45,6 +64,11 @@ def home(request):
 
 @login_required
 def sector_detail(request, id):
+    """
+    Vista de detalle del sector.
+    
+    Sin cambios - mantiene funcionalidad existente.
+    """
     sector = Sector.objects.prefetch_related('zonas').get(id=id)
     
     # Parámetros de filtro de fecha
@@ -104,7 +128,6 @@ def sector_detail(request, id):
     
     chart_data = []
     for i in range(MAX_POINTS):
-        # CONVERTIR Decimal a float para JSON
         temp_val = float(ultimas_temp[i].valor) if i < len(ultimas_temp) else 0
         ph_val = float(ultimos_ph[i].valor) if i < len(ultimos_ph) else 7
         turb_val = float(ultimas_turb[i].valor) if i < len(ultimas_turb) else 0
@@ -140,14 +163,18 @@ def sector_detail(request, id):
         'ultima_turbidez': ultima_turbidez,
         'ultima_humedad': ultima_humedad,
         'lecturas_combinadas': lecturas_combinadas,
-        'chart_data_json': chart_data,  # <- Ahora con valores float
+        'chart_data_json': chart_data,
         'fecha_inicio': fecha_inicio.strftime('%Y-%m-%dT%H:%M'),
         'fecha_fin': fecha_fin.strftime('%Y-%m-%dT%H:%M'),
     }
     return render(request, 'dashboard/sector_detail.html', context)
-
 @login_required
 def sector_create(request):
+    """
+    Crear nuevo sector.
+    
+    Sin cambios - mantiene funcionalidad existente.
+    """
     if request.method == 'POST':
         tipo = request.POST.get('tipo')
         
@@ -165,7 +192,6 @@ def sector_create(request):
                         ] + [[coords_json[0]['lng'], coords_json[0]['lat']]]]
                     }
                     
-                    # Crear en LOCAL
                     zona = Zona.objects.create(nombre=nombre, geopoligono=geojson)
                     
                     # Sincronizar con CLOUD si estamos en LOCAL
@@ -195,7 +221,6 @@ def sector_create(request):
             
             if latitud and longitud:
                 try:
-                    # Crear en LOCAL
                     sector = Sector.objects.create(
                         latitud=float(latitud),
                         longitud=float(longitud),
@@ -222,6 +247,7 @@ def sector_create(request):
         'zonas': list(zonas.values('id', 'nombre', 'geopoligono'))
     }
     return render(request, 'dashboard/sector_create.html', context)
+
 
 def sincronizar_sector_a_nube(sector):
     """Sincroniza un sector LOCAL con CLOUD"""
@@ -369,29 +395,80 @@ def leer_datos_arduino():
 @csrf_exempt
 @require_http_methods(["POST"])
 def iniciar_lectura_sensores(request):
+    """
+    Iniciar lectura de sensores y conexión WebSocket al cloud.
+    """
     global lectura_activa
     lectura_activa = True
     
+    # Conectar Arduino
     if not conectar_arduino():
         return JsonResponse({
             'error': 'No se pudo conectar con Arduino en el puerto serial.'
         }, status=500)
     
+    # Iniciar conexión WebSocket al cloud (si estamos en LOCAL)
+    if settings.IS_LOCAL:
+        print("🔌 Iniciando conexión WebSocket al cloud...")
+        try:
+            # Crear un nuevo event loop en un thread separado
+            import threading
+            
+            def start_ws_connection():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(sensor_ws_client.connect())
+            
+            ws_thread = threading.Thread(target=start_ws_connection, daemon=True)
+            ws_thread.start()
+            ws_thread.join(timeout=5)  # Esperar máximo 5s
+            
+            if sensor_ws_client.connected:
+                print("✅ WebSocket conectado al cloud")
+            else:
+                print("⚠️ WebSocket no conectado, se intentará reconectar automáticamente")
+                
+        except Exception as e:
+            print(f"⚠️ Error iniciando WebSocket: {e}")
+    
     return JsonResponse({'status': 'iniciado'})
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
 def detener_lectura_sensores(request):
+    """
+    Detener lectura de sensores y cerrar conexión WebSocket.
+    """
     global lectura_activa, conexion_serial
     lectura_activa = False
     
+    # Cerrar serial
     if conexion_serial and conexion_serial.is_open:
         conexion_serial.close()
         conexion_serial = None
     
+    # Cerrar WebSocket (si estamos en LOCAL)
+    if settings.IS_LOCAL and sensor_ws_client.connected:
+        print("🔌 Cerrando conexión WebSocket...")
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(sensor_ws_client.disconnect())
+            loop.close()
+            print("✅ WebSocket cerrado")
+        except Exception as e:
+            print(f"⚠️ Error cerrando WebSocket: {e}")
+    
     return JsonResponse({'status': 'detenido'})
 
+
 def stream_sensores(request):
+    """
+    Stream de datos de sensores vía Server-Sent Events (SSE).
+    
+    ACTUALIZADO: Ahora envía datos al cloud vía WebSocket.
+    """
     def event_stream():
         global lectura_activa
         
@@ -405,22 +482,27 @@ def stream_sensores(request):
             datos = leer_datos_arduino()
             
             if datos:
-                print(f"📊 Datos recibidos: {datos}")
+                print(f"📊 Datos recibidos del Arduino: {datos}")
                 
                 # Generar UN SOLO timestamp para toda la lectura
                 marca_tiempo = timezone.now()
                 
-                # 1. Enviar al navegador
+                # 1. Enviar al navegador (SSE)
                 yield f"data: {json.dumps(datos)}\n\n"
                 
-                # 2. Guardar en base de datos local (con timestamp compartido)
+                # 2. Guardar en base de datos local
                 print(f"💾 Guardando en base de datos local...")
                 guardar_lectura_local(datos, sector_id, marca_tiempo)
                 
-                # 3. Enviar a la nube si estamos en LOCAL (con timestamp compartido)
-                if settings.IS_LOCAL:
-                    print(f"☁️ Enviando a la nube...")
-                    enviar_a_nube(datos, sector_id, marca_tiempo)
+                # 3. Enviar al cloud vía WebSocket (si estamos en LOCAL)
+                if settings.IS_LOCAL and enviar_a_nube_ws_sync:  # ← Agrega validación
+                    print(f"☁️ Enviando al cloud vía WebSocket...")
+                    success = enviar_a_nube_ws_sync(datos, sector_id, marca_tiempo)
+                                    
+                    if success:
+                        print("✅ Datos enviados al cloud vía WebSocket")
+                    else:
+                        print("⚠️ Error enviando al cloud, se reintentará")
             else:
                 yield f"data: {json.dumps({'error': 'Sin datos'})}\n\n"
             
@@ -434,7 +516,11 @@ def stream_sensores(request):
     return response
 
 def guardar_lectura_local(datos, sector_id, marca_tiempo=None):
-    """Guarda lecturas en la base de datos LOCAL"""
+    """
+    Guarda lecturas en la base de datos LOCAL.
+    
+    Sin cambios - mantiene compatibilidad.
+    """
     try:
         from dashboard.models import (
             Sector, HistorialTemperatura, HistorialSalinidad,
