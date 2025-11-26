@@ -28,24 +28,27 @@ class SensorConsumer(AsyncWebsocketConsumer):
     """
     
     async def connect(self):
-        """Validar token antes de aceptar la conexión"""
-        
         # Obtener token del query string
-        query_string = self.scope['query_string'].decode()
+        query_string = self.scope.get('query_string', b'').decode()
         token = None
         
-        for param in query_string.split('&'):
-            if param.startswith('token='):
-                token = param.split('=')[1]
-                break
+        # Parsear query string manualmente
+        if 'token=' in query_string:
+            for param in query_string.split('&'):
+                if param.startswith('token='):
+                    token = param.split('=')[1]
+                    break
+        
+        print(f"🔐 Token recibido: {token}")
+        print(f"🔑 Token esperado: {settings.CLOUD_API_KEY}")
         
         # Validar token
-        if token != settings.CLOUD_API_KEY:
-            print(f"❌ Token inválido: {token}")
-            await self.close(code=4001)
+        if not token or token != settings.CLOUD_API_KEY:
+            print("❌ Token inválido o faltante")
+            await self.close(code=4003)
             return
         
-        print("✅ WebSocket LOCAL conectado (token válido)")
+        print("✅ Token válido - Aceptando conexión")
         await self.accept()
     
     async def disconnect(self, close_code):

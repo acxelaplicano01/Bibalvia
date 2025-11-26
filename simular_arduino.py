@@ -2,17 +2,19 @@ import os
 import django
 import random
 import time
+import asyncio
 from django.utils import timezone
-
+from asgiref.sync import sync_to_async
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bivalvia.settings')
 django.setup()
 
-from dashboard.views import guardar_lectura_local, enviar_a_nube
+from dashboard.views import guardar_lectura_local
+from dashboard.ws_client import sensor_ws_client, enviar_a_nube_ws
 from django.conf import settings
+from dashboard.models import Sector
 
 def generar_datos_realistas():
-    """Genera datos simulados realistas"""
     return {
         'temperatura': round(random.uniform(20.0, 30.0), 2),
         'ph': round(random.uniform(6.5, 8.5), 2),
@@ -20,64 +22,68 @@ def generar_datos_realistas():
         'humedad': round(random.uniform(60.0, 95.0), 2)
     }
 
-print("🤖 SIMULADOR DE ARDUINO")
-print("=" * 60)
-print(f"Entorno: {settings.ENVIRONMENT.upper()}")
-print(f"Base de datos: {'SQLite' if settings.IS_LOCAL else 'PostgreSQL'}")
+@sync_to_async
+def get_sector(sector_id):
+    return Sector.objects.get(id=sector_id)
 
-# Obtener sector_id
-sector_id = input("\n🎯 Ingresa el ID del sector a monitorear (default: 1): ").strip()
-sector_id = sector_id if sector_id else "1"
+@sync_to_async
+def guardar_local(datos, sector_id, marca_tiempo):
+    return guardar_lectura_local(datos, sector_id, marca_tiempo)
 
-# Validar que el sector existe
-from dashboard.models import Sector
-try:
-    sector = Sector.objects.get(id=sector_id)
-    print(f"✓ Sector encontrado: {sector.nombre_sector or f'Sector {sector.id}'}")
-except Sector.DoesNotExist:
-    print(f"❌ ERROR: Sector {sector_id} no existe")
-    print("\nCrea el sector primero desde la interfaz web")
-    exit(1)
-
-print("\n📡 Enviando datos cada 5 segundos...")
-print("🛑 Presiona Ctrl+C para detener\n")
-print("-" * 60)
-
-
-try:
-    contador = 1
-    while True:
-        datos = generar_datos_realistas()
-        marca_tiempo = timezone.now()  # ← Generar una sola vez
-        
-        print(f"\n📊 Lectura #{contador} - {time.strftime('%H:%M:%S')}")
-        print(f"   🌡️  Temperatura: {datos['temperatura']}°C")
-        print(f"   🧪 pH: {datos['ph']}")
-        print(f"   💧 Turbidez: {datos['turbidez']} NTU")
-        print(f"   💨 Humedad: {datos['humedad']}%")
-        
-        # Guardar localmente (con timestamp compartido)
-        print(f"   💾 Guardando en base de datos local...", end=" ")
-        if guardar_lectura_local(datos, sector_id, marca_tiempo):
-            print("✅")
+async def simular():
+    print("🤖 SIMULADOR DE ARDUINO CON WEBSOCKET")
+    print("=" * 60)
+    
+    sector_id = input("\n🎯 ID del sector (default: 1): ").strip() or "1"
+    
+    try:
+        sector = await get_sector(sector_id)
+        print(f"✓ Sector: {sector.nombre_sector or f'Sector {sector.id}'}")
+    except Sector.DoesNotExist:
+        print(f"❌ Sector {sector_id} no existe")
+        return
+    
+    if settings.IS_LOCAL:
+        print("\n🔌 Conectando WebSocket...")
+        if await sensor_ws_client.connect():
+            print("✅ Conectado")
         else:
-            print("❌")
-        
-        # Enviar a la nube si estamos en LOCAL (con timestamp compartido)
-        if settings.IS_LOCAL:
-            print(f"   ☁️  Enviando a la nube...", end=" ")
-            if enviar_a_nube(datos, sector_id, marca_tiempo):
+            print("❌ Error")
+            return
+    
+    print("\n📡 Enviando datos cada 5s (Ctrl+C para detener)\n")
+    
+    try:
+        contador = 1
+        while True:
+            datos = generar_datos_realistas()
+            marca_tiempo = timezone.now()
+            
+            print(f"\n📊 #{contador} - {time.strftime('%H:%M:%S')}")
+            print(f"   Temp: {datos['temperatura']}°C | pH: {datos['ph']}")
+            print(f"   Turb: {datos['turbidez']} | Hum: {datos['humedad']}%")
+            
+            print(f"   💾 Local...", end=" ")
+            if await guardar_local(datos, sector_id, marca_tiempo):
                 print("✅")
             else:
                 print("❌")
-        
-        contador += 1
-        time.sleep(5)
-        
-except KeyboardInterrupt:
-    print("\n\n🛑 Simulación detenida")
-    print(f"📈 Total de lecturas: {contador - 1}")
-    print("\n✅ Puedes verificar los datos en:")
-    print(f"   LOCAL: http://localhost:8000/sector/{sector_id}/")
-    if settings.IS_LOCAL:
-        print(f"   CLOUD: https://bivalvia-cloud.onrender.com/sector/{sector_id}/")
+            
+            if settings.IS_LOCAL:
+                print(f"   ☁️  Cloud...", end=" ")
+                if await enviar_a_nube_ws(datos, sector_id, marca_tiempo):
+                    print("✅")
+                else:
+                    print("❌")
+            
+            contador += 1
+            await asyncio.sleep(5)
+            
+    except KeyboardInterrupt:
+        print("\n\n🛑 Detenido")
+        if settings.IS_LOCAL:
+            await sensor_ws_client.disconnect()
+        print(f"Total: {contador - 1} lecturas")
+
+if __name__ == "__main__":
+    asyncio.run(simular())

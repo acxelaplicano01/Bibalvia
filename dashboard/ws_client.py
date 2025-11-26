@@ -41,6 +41,7 @@ class SensorWebSocketClient:
     def __init__(self):
         self.websocket: Optional[websockets.WebSocketClientProtocol] = None
         self.url: str = self._build_url()
+        print(f"URL: {self.url}")
         self.connected: bool = False
         self.reconnect_interval: int = 5  # segundos
         self.max_reconnect_attempts: int = 10
@@ -51,21 +52,22 @@ class SensorWebSocketClient:
         self.heartbeat_task: Optional[asyncio.Task] = None
     
     def _build_url(self) -> str:
-        """Construir URL del WebSocket con token de autenticación"""
+        # Obtener URL del WebSocket
+        cloud_url = settings.CLOUD_WS_URL
         
-        # Obtener URL base del cloud
-        cloud_url = settings.CLOUD_WS_URL or settings.CLOUD_API_URL
-        
-        # Convertir HTTP(S) a WS(S)
-        if cloud_url.startswith('https://'):
-            ws_url = cloud_url.replace('https://', 'wss://')
-        elif cloud_url.startswith('http://'):
-            ws_url = cloud_url.replace('http://', 'ws://')
-        else:
+        # Si ya viene completa, usarla directamente
+        if cloud_url and '/ws/sensores/' in cloud_url:
             ws_url = cloud_url
-        
-        # Asegurar que termina en /ws/sensores/
-        if not ws_url.endswith('/ws/sensores/'):
+        else:
+            # Construir desde API_URL
+            cloud_url = settings.CLOUD_API_URL or ''
+            if cloud_url.startswith('https://'):
+                ws_url = cloud_url.replace('https://', 'wss://')
+            elif cloud_url.startswith('http://'):
+                ws_url = cloud_url.replace('http://', 'ws://')
+            else:
+                ws_url = cloud_url
+            
             if not ws_url.endswith('/'):
                 ws_url += '/'
             ws_url += 'ws/sensores/'
