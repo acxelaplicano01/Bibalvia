@@ -11,6 +11,8 @@ from channels.db import database_sync_to_async
 from django.utils import timezone
 from django.conf import settings
 from datetime import datetime
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SensorConsumer(AsyncWebsocketConsumer):
@@ -28,27 +30,27 @@ class SensorConsumer(AsyncWebsocketConsumer):
     """
     
     async def connect(self):
-        # Obtener token del query string
-        query_string = self.scope.get('query_string', b'').decode()
-        token = None
+        logger.info("🔌 SensorConsumer.connect() llamado")
         
-        # Parsear query string manualmente
+        query_string = self.scope.get('query_string', b'').decode()
+        logger.info(f"📋 Query string: {query_string}")
+        
+        token = None
         if 'token=' in query_string:
             for param in query_string.split('&'):
                 if param.startswith('token='):
                     token = param.split('=')[1]
                     break
         
-        print(f"🔐 Token recibido: {token}")
-        print(f"🔑 Token esperado: {settings.CLOUD_API_KEY}")
+        logger.info(f"🔐 Token recibido: {token}")
+        logger.info(f"🔑 Token esperado: {settings.CLOUD_API_KEY}")
         
-        # Validar token
         if not token or token != settings.CLOUD_API_KEY:
-            print("❌ Token inválido o faltante")
+            logger.error("❌ Token inválido")
             await self.close(code=4003)
             return
         
-        print("✅ Token válido - Aceptando conexión")
+        logger.info("✅ Token válido")
         await self.accept()
     
     async def disconnect(self, close_code):
