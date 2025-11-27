@@ -16,6 +16,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta
 from django.core.files.storage import FileSystemStorage
+from django.http import HttpResponse
+import csv
 
 # Importar cliente WebSocket solo en LOCAL
 try:
@@ -638,3 +640,56 @@ def enviar_a_nube(datos, sector_id, marca_tiempo=None):
     except Exception as e:
         print(f"✗ Error inesperado: {e}")
         return False
+    
+    
+@login_required
+def exportar_csv(request, sector_id):
+    sector = Sector.objects.get(id=sector_id)
+    
+    # Filtros de fecha (igual que sector_detail)
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    
+    if not fecha_inicio or not fecha_fin:
+        fecha_fin = timezone.now()
+        fecha_inicio = fecha_fin - timedelta(hours=24)
+    else:
+        fecha_inicio = timezone.make_aware(datetime.strptime(fecha_inicio, '%Y-%m-%dT%H:%M'))
+        fecha_fin = timezone.make_aware(datetime.strptime(fecha_fin, '%Y-%m-%dT%H:%M'))
+    
+    # Obtener datos
+    temperaturas = sector.temperaturas.filter(
+        marca_tiempo__gte=fecha_inicio, marca_tiempo__lte=fecha_fin
+    ).order_by('-marca_tiempo')
+    
+    ph_dict = {r.marca_tiempo: r for r in sector.ph_registros.filter(
+        marca_tiempo__gte=fecha_inicio, marca_tiempo__lte=fecha_fin
+    )}
+    turb_dict = {r.marca_tiempo: r for r in sector.turbideces.filter(
+        marca_tiempo__gte=fecha_inicio, marca_tiempo__lte=fecha_fin
+    )}
+    hum_dict = {r.marca_tiempo: r for r in sector.humedades.filter(
+        marca_tiempo__gte=fecha_inicio, marca_tiempo__lte=fecha_fin
+    )}
+    
+    # Crear CSV
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="sector_{sector_id}_datos.csv"'
+    
+    # Agregar BOM para UTF-8
+    response.write('\ufeff')
+    
+    writer = csv.writer(response)
+    writer.writerow(['Fecha', 'Hora', 'Temperatura (°C)', 'pH', 'Turbidez (NTU)', 'Humedad (%)'])
+    
+    for temp in temperaturas:
+        writer.writerow([
+            temp.marca_tiempo.strftime('%d/%m/%Y'),
+            temp.marca_tiempo.strftime('%H:%M:%S'),
+            temp.valor,
+            ph_dict.get(temp.marca_tiempo).valor if temp.marca_tiempo in ph_dict else '',
+            turb_dict.get(temp.marca_tiempo).valor if temp.marca_tiempo in turb_dict else '',
+            hum_dict.get(temp.marca_tiempo).valor if temp.marca_tiempo in hum_dict else '',
+        ])
+    
+    return response

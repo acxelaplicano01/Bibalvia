@@ -16,5 +16,8 @@ urlpatterns = [
     path('detener-sensores/', views.detener_sensores, name='detener_sensores'),
     path('iniciar-grabacion/', views.iniciar_grabacion, name='iniciar_grabacion'),
     path('detener-grabacion/', views.detener_grabacion, name='detener_grabacion'),
+    
+    # Exportar a csv
+    path('exportar-csv/<int:sector_id>/', views.exportar_csv, name='exportar_csv'),
 ]
 

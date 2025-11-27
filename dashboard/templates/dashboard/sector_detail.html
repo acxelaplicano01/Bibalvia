@@ -213,6 +213,12 @@
                         <span>Filtrar</span>
                     </button>
 
+                    <a href="{% url 'exportar_csv' sector.id %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}"
+                        class="w-max bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Exportar CSV</span>
+                    </a>
+
                     <a href="{% url 'sector_detail' sector.id %}"
                         class="w-max bg-slate-300 hover:bg-slate-200 active:bg-slate-400 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 shadow-sm">
                         <i class="fa-solid fa-rotate-left"></i>
