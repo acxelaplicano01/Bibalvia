@@ -17,16 +17,16 @@ class DashboardWebSocket {
         this.maxReconnectAttempts = 10;
         this.reconnectInterval = 5000; // 5 segundos
         this.heartbeatInterval = null;
-        
+
         // Callbacks
         this.onDataReceived = null;
         this.onConnected = null;
         this.onDisconnected = null;
         this.onError = null;
-        
+
         this.connect();
     }
-    
+
     /**
      * Construir URL del WebSocket
      */
@@ -35,116 +35,116 @@ class DashboardWebSocket {
         const host = window.location.host;
         return `${protocol}//${host}/ws/dashboard/${this.sectorId}/`;
     }
-    
+
     /**
      * Conectar al WebSocket
      */
     connect() {
         console.log(`🔌 Conectando WebSocket para sector ${this.sectorId}...`);
-        
+
         const wsUrl = this.getWebSocketUrl();
-        
+
         try {
             this.ws = new WebSocket(wsUrl);
-            
+
             // Event: Conexión abierta
             this.ws.onopen = (event) => {
                 console.log('✅ WebSocket conectado');
                 this.reconnectAttempts = 0;
-                
+
                 // Iniciar heartbeat
                 this.startHeartbeat();
-                
+
                 // Callback
                 if (this.onConnected) {
                     this.onConnected();
                 }
-                
+
                 // Actualizar UI
                 this.updateConnectionStatus(true);
             };
-            
+
             // Event: Mensaje recibido
             this.ws.onmessage = (event) => {
                 try {
                     const message = JSON.parse(event.data);
                     console.log('📨 Mensaje recibido:', message);
-                    
+
                     // Manejar diferentes tipos de mensajes
                     switch (message.type) {
                         case 'connection_established':
                             console.log(`✅ ${message.message}`);
                             break;
-                            
+
                         case 'sensor_data':
                             // Datos de sensores
                             this.handleSensorData(message.data);
                             break;
-                            
+
                         default:
                             console.log('Mensaje no reconocido:', message);
                     }
-                    
+
                 } catch (error) {
                     console.error('❌ Error parseando mensaje:', error);
                 }
             };
-            
+
             // Event: Error
             this.ws.onerror = (error) => {
                 console.error('❌ Error en WebSocket:', error);
-                
+
                 // Callback
                 if (this.onError) {
                     this.onError(error);
                 }
             };
-            
+
             // Event: Conexión cerrada
             this.ws.onclose = (event) => {
                 console.log('🔌 WebSocket cerrado:', event.code, event.reason);
-                
+
                 // Detener heartbeat
                 this.stopHeartbeat();
-                
+
                 // Callback
                 if (this.onDisconnected) {
                     this.onDisconnected(event);
                 }
-                
+
                 // Actualizar UI
                 this.updateConnectionStatus(false);
-                
+
                 // Intentar reconectar
                 this.reconnect();
             };
-            
+
         } catch (error) {
             console.error('❌ Error creando WebSocket:', error);
             this.reconnect();
         }
     }
-    
+
     /**
      * Manejar datos de sensores recibidos
      */
     handleSensorData(data) {
         console.log('📊 Datos de sensores:', data);
-        
+
         // Callback personalizado
         if (this.onDataReceived) {
             this.onDataReceived(data);
         }
-        
+
         // Actualizar cards
         this.updateCards(data);
-        
+
         // Actualizar gráfico
         if (typeof pushDataPoint === 'function') {
             pushDataPoint(data);
         }
     }
-    
+
     /**
      * Actualizar cards con nuevos valores
      */
@@ -157,7 +157,7 @@ class DashboardWebSocket {
                 this.animateCard(tempElement);
             }
         }
-        
+
         // pH
         if (datos.ph !== null && datos.ph !== undefined) {
             const phElement = document.querySelector('[data-sensor="ph"]');
@@ -166,7 +166,7 @@ class DashboardWebSocket {
                 this.animateCard(phElement);
             }
         }
-        
+
         // Turbidez
         if (datos.turbidez !== null && datos.turbidez !== undefined) {
             const turbElement = document.querySelector('[data-sensor="turbidez"]');
@@ -175,7 +175,7 @@ class DashboardWebSocket {
                 this.animateCard(turbElement);
             }
         }
-        
+
         // Humedad
         if (datos.humedad !== null && datos.humedad !== undefined) {
             const humElement = document.querySelector('[data-sensor="humedad"]');
@@ -184,7 +184,7 @@ class DashboardWebSocket {
                 this.animateCard(humElement);
             }
         }
-        
+
         // Salinidad
         if (datos.salinidad !== null && datos.salinidad !== undefined) {
             const salElement = document.querySelector('[data-sensor="salinidad"]');
@@ -194,7 +194,7 @@ class DashboardWebSocket {
             }
         }
     }
-    
+
     /**
      * Animar card cuando se actualiza
      */
@@ -204,7 +204,7 @@ class DashboardWebSocket {
             element.classList.remove('sensor-update');
         }, 500);
     }
-    
+
     /**
      * Actualizar indicador de conexión en la UI
      */
@@ -213,14 +213,14 @@ class DashboardWebSocket {
         if (indicator) {
             if (connected) {
                 indicator.className = 'ws-status connected';
-                indicator.textContent = '🟢 Conectado';
+                indicator.innerHTML = '<i class="fa-solid fa-circle"></i> Conectado';
             } else {
                 indicator.className = 'ws-status disconnected';
-                indicator.textContent = '🔴 Desconectado';
+                indicator.innerHTML = '<i class="fa-solid fa-circle"></i> Desconectado';
             }
         }
     }
-    
+
     /**
      * Intentar reconexión
      */
@@ -229,15 +229,15 @@ class DashboardWebSocket {
             console.error('❌ Máximo de intentos de reconexión alcanzado');
             return;
         }
-        
+
         this.reconnectAttempts++;
         console.log(`🔄 Reintentando conexión (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-        
+
         setTimeout(() => {
             this.connect();
         }, this.reconnectInterval);
     }
-    
+
     /**
      * Iniciar heartbeat para mantener conexión viva
      */
@@ -249,7 +249,7 @@ class DashboardWebSocket {
             }
         }, 30000); // Cada 30 segundos
     }
-    
+
     /**
      * Detener heartbeat
      */
@@ -259,7 +259,7 @@ class DashboardWebSocket {
             this.heartbeatInterval = null;
         }
     }
-    
+
     /**
      * Enviar mensaje al servidor (opcional)
      */
@@ -270,7 +270,7 @@ class DashboardWebSocket {
             console.warn('⚠️ WebSocket no está conectado');
         }
     }
-    
+
     /**
      * Cerrar conexión manualmente
      */
@@ -290,29 +290,29 @@ class DashboardWebSocket {
 let dashboardWS = null;
 
 // Inicializar cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Solo inicializar si estamos en CLOUD
     if (typeof IS_CLOUD !== 'undefined' && IS_CLOUD) {
         console.log('🌐 Inicializando WebSocket para dashboard en CLOUD');
-        
+
         // Obtener sector_id del contexto (debe estar definido en el template)
         if (typeof sectorId !== 'undefined') {
             dashboardWS = new DashboardWebSocket(sectorId);
-            
+
             // Configurar callbacks (opcional)
-            dashboardWS.onConnected = function() {
+            dashboardWS.onConnected = function () {
                 console.log('✅ Callback: Conectado');
             };
-            
-            dashboardWS.onDisconnected = function(event) {
+
+            dashboardWS.onDisconnected = function (event) {
                 console.log('🔌 Callback: Desconectado');
             };
-            
-            dashboardWS.onError = function(error) {
+
+            dashboardWS.onError = function (error) {
                 console.error('❌ Callback: Error', error);
             };
-            
-            dashboardWS.onDataReceived = function(data) {
+
+            dashboardWS.onDataReceived = function (data) {
                 console.log('📊 Callback: Datos recibidos', data);
             };
         } else {
@@ -334,26 +334,30 @@ style.textContent = `
     .ws-status {
         position: fixed;
         top: 10px;
-        right: 10px;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-size: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 13px;
         font-weight: 500;
         z-index: 1000;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        transition: all 0.3s ease;
+        border: 1px solid transparent;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #f5f5f5;
     }
-    
-    .ws-status.connected {
-        background-color: #d4edda;
-        color: #155724;
-        border: 1px solid #c3e6cb;
+
+    .ws-status i {
+        font-size: 10px;
     }
-    
-    .ws-status.disconnected {
-        background-color: #f8d7da;
-        color: #721c24;
-        border: 1px solid #f5c6cb;
+
+    .ws-status.connected i {
+        color: #3cb043;
+    }
+
+    .ws-status.disconnected i {
+        color: #c62828;
     }
     
     /* Animación para cards actualizados */
@@ -386,22 +390,22 @@ function leerDatos() {
         // Usar SSE (código existente)
         const sectorId = typeof window.sectorId !== 'undefined' ? window.sectorId : 1;
         const eventSource = new EventSource(`/stream-sensores/?sector_id=${sectorId}`);
-        
-        eventSource.onmessage = function(event) {
+
+        eventSource.onmessage = function (event) {
             const datos = JSON.parse(event.data);
-            
+
             // Actualizar cards
             if (dashboardWS) {
                 dashboardWS.updateCards(datos);
             }
-            
+
             // Actualizar gráfico
             if (typeof pushDataPoint === 'function') {
                 pushDataPoint(datos);
             }
         };
-        
-        eventSource.onerror = function(error) {
+
+        eventSource.onerror = function (error) {
             console.error('❌ Error en SSE:', error);
             eventSource.close();
         };
