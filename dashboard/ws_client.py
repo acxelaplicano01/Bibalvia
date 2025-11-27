@@ -41,7 +41,7 @@ class SensorWebSocketClient:
     def __init__(self):
         self.websocket: Optional[websockets.WebSocketClientProtocol] = None
         self.url: str = self._build_url()
-        print(f"URL: {self.url}")
+        
         self.connected: bool = False
         self.reconnect_interval: int = 5  # segundos
         self.max_reconnect_attempts: int = 10
