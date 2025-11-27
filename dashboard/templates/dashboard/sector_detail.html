@@ -19,7 +19,8 @@
     <div id="ws-status" class="ws-status disconnected">🔴 Desconectado</div>
     {% endif %}
 
-    <section class="mx-4 mt-4 flex items-center justify-center p-4 border bg-white border-gray-300 rounded-lg shadow-sm text-lg font-semibold">
+    <section
+        class="mx-4 mt-4 flex items-center justify-center p-4 border bg-white border-gray-300 rounded-lg shadow-sm text-lg font-semibold">
         <p>Datos del sector: {{ sector.nombre_sector }}</p>
     </section>
 
@@ -62,7 +63,8 @@
 
         <div class="w-full sm:w-1/2 flex flex-col gap-4 h-full">
             <div class="flex gap-4">
-                <article class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                <article
+                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
                     <i class="fa-solid fa-droplet text-blue-500 fa-2x"></i>
                     <div class="flex flex-col align-items-center">
                         <span class="text-xl font-bold" data-sensor="humedad">
@@ -71,7 +73,8 @@
                         <h3 class="text-sm">Humedad</h3>
                     </div>
                 </article>
-                <article class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                <article
+                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
                     <i class="fa-solid fa-temperature-half text-red-600 fa-2x"></i>
                     <div class="flex flex-col align-items-center">
                         <span class="text-xl font-bold" data-sensor="temperatura">
@@ -82,7 +85,8 @@
                 </article>
             </div>
             <div class="flex gap-4">
-                <article class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                <article
+                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
                     <i class="fa-solid fa-water text-amber-500 fa-2x"></i>
                     <div class="flex flex-col align-items-center">
                         <span class="text-xl font-bold" data-sensor="turbidez">
@@ -91,7 +95,8 @@
                         <h3 class="text-sm">Turbidez</h3>
                     </div>
                 </article>
-                <article class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                <article
+                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
                     <i class="fa-solid fa-vial text-green-600 fa-2x"></i>
                     <div class="flex flex-col align-items-center">
                         <span class="text-xl font-bold" data-sensor="ph" id="valor-ph">
@@ -102,7 +107,8 @@
                 </article>
             </div>
             <div class="flex gap-4">
-                <article class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                <article
+                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
                     <i class="fa-solid fa-flask text-rose-300 fa-2x"></i>
                     <div class="flex flex-col align-items-center">
                         <span class="text-xl font-bold" data-sensor="salinidad">
@@ -111,7 +117,8 @@
                         <h3 class="text-sm">Salinidad</h3>
                     </div>
                 </article>
-                <article class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                <article
+                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
                     <i class="fa-solid fa-lungs text-cyan-600 fa-2x"></i>
                     <div class="flex flex-col align-items-center">
                         <span class="text-xl font-bold" data-sensor="oxigeno">--</span>
@@ -122,11 +129,12 @@
 
             {% if IS_LOCAL %}
             <div class="flex gap-4">
-                <button class="bg-green-700 text-white flex gap-4 px-4 py-6 rounded-lg shadow-md h-max w-full justify-center items-center active:scale-98 hover:bg-green-600 transition-all">
+                <button id="btnSensores" onclick="toggleSensores()"
+                    class="bg-green-700 text-white flex gap-4 px-4 py-6 rounded-lg shadow-md h-max w-full justify-center items-center active:scale-98 hover:bg-green-600 transition-all">
                     <i class="fa-solid fa-circle-play fa-2x"></i>
                     <span class="text-xl font-semibold">Iniciar Sensores</span>
                 </button>
-                <button type="button" id="leerDatos" onclick="leerDatos()"
+                <button id="btnGrabacion" onclick="toggleGrabacion()" disabled
                     class="bg-amber-600 text-white flex gap-4 px-4 py-6 rounded-lg shadow-md h-max w-full justify-center items-center active:scale-98 hover:bg-amber-500 transition-all">
                     <i class="fa-solid fa-circle-play fa-2x"></i>
                     <div class="flex flex-col align-items-center">
@@ -135,7 +143,8 @@
                 </button>
             </div>
             {% else %}
-            <div class="bg-gray-100 text-gray-500 flex gap-4 px-4 py-6 rounded-lg shadow-md h-max w-full justify-center items-center">
+            <div
+                class="bg-gray-100 text-gray-500 flex gap-4 px-4 py-6 rounded-lg shadow-md h-max w-full justify-center items-center">
                 <i class="fa-solid fa-lock fa-2x"></i>
                 <div class="flex flex-col align-items-center">
                     <span class="text-xl font-semibold">Lectura de Sensores Deshabilitada en la Nube</span>
@@ -217,7 +226,8 @@
         <div class="overflow-x-auto rounded-lg border border-gray-200">
             <div class="overflow-y-auto max-h-[60vh]">
                 <table class="w-full min-w-full text-sm">
-                    <thead class="bg-linear-to-r from-gray-50 to-gray-100 text-xs uppercase text-gray-600 sticky top-0 z-10">
+                    <thead
+                        class="bg-linear-to-r from-gray-50 to-gray-100 text-xs uppercase text-gray-600 sticky top-0 z-10">
                         <tr>
                             <th class="px-4 py-3 text-left font-semibold border-b-2 border-gray-300">
                                 <div class="flex items-center gap-2">
@@ -262,7 +272,8 @@
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 {% if lectura.temperatura %}
-                                <span class="text-red-600 font-bold">{{lectura.temperatura.valor|floatformat:1}}°C</span>
+                                <span
+                                    class="text-red-600 font-bold">{{lectura.temperatura.valor|floatformat:1}}°C</span>
                                 {% else %}
                                 <span class="text-gray-300 text-xs">Sin datos</span>
                                 {% endif %}
@@ -300,7 +311,8 @@
                                     </div>
                                     <div>
                                         <p class="text-lg font-semibold text-gray-600 mb-1">No hay datos disponibles</p>
-                                        <p class="text-sm text-gray-500">Intenta ajustar el rango de fechas o espera a que se registren nuevas lecturas</p>
+                                        <p class="text-sm text-gray-500">Intenta ajustar el rango de fechas o espera a
+                                            que se registren nuevas lecturas</p>
                                     </div>
                                 </div>
                             </td>
@@ -312,7 +324,8 @@
         </div>
 
         <!-- Footer -->
-        <div class="mt-4 pt-3 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-gray-500">
+        <div
+            class="mt-4 pt-3 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-gray-500">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-info-circle text-blue-500"></i>
                 <span>Mostrando máximo 100 registros más recientes</span>
@@ -349,7 +362,8 @@
             <div class="bg-white border border-gray-300 rounded-lg shadow-sm flex-1">
                 <div class="p-4 flex flex-col h-full">
                     <h6 class="font-semibold mb-3">Anexos</h6>
-                    <label class="border border-dashed border-gray-400 rounded-lg p-4 text-center text-sm cursor-pointer hover:bg-gray-50">
+                    <label
+                        class="border border-dashed border-gray-400 rounded-lg p-4 text-center text-sm cursor-pointer hover:bg-gray-50">
                         <input type="file" accept="image/*" class="hidden" id="uploadImg">
                         Haz clic para subir una imagen
                     </label>
@@ -393,7 +407,7 @@
     };
 
     {% if IS_CLOUD %}
-    const lecturasChart = {{ chart_data_json|safe }};
+    const lecturasChart = {{ chart_data_json| safe }};
     if (lecturasChart && lecturasChart.length > 0) {
         lecturasChart.forEach(l => {
             buffer.labels.push(l.marca_tiempo);
@@ -540,143 +554,105 @@
 <script src="{% static 'js/dashboard_websocket.js' %}"></script>
 {% endif %}
 
-<!-- SSE para LOCAL -->
+<!-- Sensores para LOCAL solamente -->
 {% if IS_LOCAL %}
 <script>
-    let reading = false;
+    let sensoresActivos = false;
+    let grabacionActiva = false;
     let eventSource = null;
 
-    function leerDatos() {
-        const btn = document.getElementById('leerDatos');
+    function toggleSensores() {
+        const btn = document.getElementById('btnSensores');
+        const btnGrab = document.getElementById('btnGrabacion');
 
-        if (!reading) {
-            btn.innerHTML = `
-                <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
-                <div class="flex align-items-center">
-                    <span class="text-xl font-semibold">Detener</span>
-                </div>
-            `;
-            btn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
-            btn.classList.add('bg-blue-700', 'hover:bg-blue-600');
-
-            fetch("{% url 'iniciar_lectura_sensores' %}", {
+        if (!sensoresActivos) {
+            // Iniciar sensores
+            fetch("{% url 'iniciar_sensores' %}", {
                 method: "POST",
                 headers: { 'X-CSRFToken': '{{ csrf_token }}' }
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert(`Error: ${data.error}`);
-                    leerDatos();
-                    return;
-                }
-
-                eventSource = new EventSource("{% url 'stream_sensores' %}?sector_id={{ sector.id }}");
-
-                eventSource.onmessage = function (event) {
-                    const datos = JSON.parse(event.data);
-                    if (datos.status === 'cerrado') {
-                        eventSource.close();
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
                         return;
                     }
-                    if (!datos.error) {
-                        actualizarValores(datos);
-                    }
-                };
 
-                eventSource.onerror = function () {
-                    eventSource.close();
-                    leerDatos();
-                };
-            });
+                    sensoresActivos = true;
+                    btn.innerHTML = '<i class="fa-solid fa-stop fa-2x"></i><span class="text-xl font-semibold">Detener Sensores</span>';
+                    btn.classList.remove('bg-green-700', 'hover:bg-green-600');
+                    btn.classList.add('bg-red-700', 'hover:bg-red-600');
+
+                    // Habilitar botón de grabación
+                    btnGrab.disabled = false;
+                    btnGrab.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                    btnGrab.classList.add('bg-amber-600', 'hover:bg-amber-500');
+
+                    // Iniciar SSE
+                    eventSource = new EventSource("{% url 'stream_sensores' %}?sector_id={{ sector.id }}");
+                    eventSource.onmessage = (e) => {
+                        const datos = JSON.parse(e.data);
+                        if (datos.status !== 'cerrado' && !datos.error) {
+                            actualizarValores(datos);
+                        }
+                    };
+                });
         } else {
-            btn.innerHTML = `
-                <i class="fa-solid fa-circle-play fa-2x"></i>
-                <div class="flex flex-col align-items-center">
-                    <span class="text-xl font-semibold">Iniciar grabación</span>
-                </div>
-            `;
-            btn.classList.remove('bg-blue-700', 'hover:bg-blue-600');
-            btn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+            // Detener sensores
+            if (grabacionActiva) toggleGrabacion(); // Detener grabación primero
 
-            if (eventSource) {
-                eventSource.close();
-                eventSource = null;
-            }
-
-            fetch("{% url 'detener_lectura_sensores' %}", {
+            fetch("{% url 'detener_sensores' %}", {
                 method: "POST",
                 headers: { 'X-CSRFToken': '{{ csrf_token }}' }
-            });
-        }
+            })
+                .then(() => {
+                    sensoresActivos = false;
+                    btn.innerHTML = '<i class="fa-solid fa-circle-play fa-2x"></i><span class="text-xl font-semibold">Iniciar Sensores</span>';
+                    btn.classList.remove('bg-red-700', 'hover:bg-red-600');
+                    btn.classList.add('bg-green-700', 'hover:bg-green-600');
 
-        reading = !reading;
-    }
+                    btnGrab.disabled = true;
+                    btnGrab.classList.add('bg-gray-400', 'cursor-not-allowed');
+                    btnGrab.classList.remove('bg-amber-600', 'hover:bg-amber-500', 'bg-blue-700', 'hover:bg-blue-600');
 
-    function actualizarValores(datos) {
-        // Temperatura
-        if (datos.temperatura !== undefined && datos.temperatura !== -999) {
-            const tempElement = document.querySelector('[data-sensor="temperatura"]');
-            if (tempElement) tempElement.textContent = `${datos.temperatura.toFixed(1)}°C`;
-        }
-
-        // Humedad
-        if (datos.humedad !== undefined) {
-            const humElement = document.querySelector('[data-sensor="humedad"]');
-            if (humElement) humElement.textContent = `${datos.humedad.toFixed(1)}%`;
-        }
-
-        // Turbidez
-        if (datos.turbidez !== undefined) {
-            const turbElement = document.querySelector('[data-sensor="turbidez"]');
-            if (turbElement) turbElement.textContent = `${datos.turbidez.toFixed(0)} NTU`;
-        }
-
-        // pH
-        if (datos.ph !== undefined) {
-            const phElement = document.querySelector('[data-sensor="ph"]');
-            if (phElement) {
-                phElement.textContent = datos.ph.toFixed(2);
-                
-                // Color según pH
-                if (datos.ph < 6.5) {
-                    phElement.className = 'text-xl font-bold text-red-600';
-                } else if (datos.ph > 8.5) {
-                    phElement.className = 'text-xl font-bold text-blue-600';
-                } else {
-                    phElement.className = 'text-xl font-bold text-green-600';
-                }
-            }
-        }
-
-        // Actualizar gráfico
-        pushDataPoint(datos);
-
-        // Animación
-        document.querySelectorAll('[data-sensor]').forEach(el => {
-            const card = el.closest('article');
-            card.classList.add('ring-2', 'ring-green-400');
-            setTimeout(() => card.classList.remove('ring-2', 'ring-green-400'), 500);
-        });
-
-        // Log
-        const logElement = document.querySelector('.bg-slate-900');
-        if (logElement) {
-            const timestamp = new Date().toLocaleTimeString();
-            logElement.innerHTML += `[${timestamp}] Temp: ${datos.temperatura?.toFixed(1)}°C | Turbidez: ${datos.turbidez?.toFixed(0)} NTU | Humedad: ${datos.humedad?.toFixed(1)}% | pH: ${datos.ph?.toFixed(2)}<br>`;
-            logElement.scrollTop = logElement.scrollHeight;
+                    if (eventSource) eventSource.close();
+                });
         }
     }
 
-    window.addEventListener('beforeunload', function () {
-        if (reading && eventSource) {
-            eventSource.close();
-            fetch("{% url 'detener_lectura_sensores' %}", {
+    function toggleGrabacion() {
+        const btn = document.getElementById('btnGrabacion');
+
+        if (!grabacionActiva) {
+            fetch("{% url 'iniciar_grabacion' %}", {
                 method: "POST",
                 headers: { 'X-CSRFToken': '{{ csrf_token }}' }
-            });
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+
+                    grabacionActiva = true;
+                    btn.innerHTML = '<i class="fa-solid fa-stop fa-2x"></i><span class="text-xl font-semibold">Detener Grabación</span>';
+                    btn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+                    btn.classList.add('bg-blue-700', 'hover:bg-blue-600');
+                });
+        } else {
+            fetch("{% url 'detener_grabacion' %}", {
+                method: "POST",
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            })
+                .then(() => {
+                    grabacionActiva = false;
+                    btn.innerHTML = '<i class="fa-solid fa-circle-play fa-2x"></i><span class="text-xl font-semibold">Iniciar Grabación</span>';
+                    btn.classList.remove('bg-blue-700', 'hover:bg-blue-600');
+                    btn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+                });
         }
-    });
+    }
 </script>
 
 <!-- Image Upload (LOCAL only) -->
@@ -710,10 +686,10 @@
             headers: { 'X-CSRFToken': '{{ csrf_token }}' },
             body: formData
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.ok) location.reload();
-        });
+            .then(response => response.json())
+            .then(data => {
+                if (data.ok) location.reload();
+            });
         contador++;
     });
 
@@ -737,12 +713,12 @@
 
     const zonasDelSector = [
         {% for zona in sector.zonas.all %}
-        {
-            id: {{ zona.id }},
-            nombre: "{{ zona.nombre|escapejs }}",
-            geopoligono: {{ zona.geopoligono|safe }}
-        }{% if not forloop.last %},{% endif %}
-        {% endfor %}
+    {
+        id: {{ zona.id }},
+        nombre: "{{ zona.nombre|escapejs }}",
+            geopoligono: {{ zona.geopoligono | safe }}
+    } {% if not forloop.last %}, {% endif %}
+    {% endfor %}
     ];
 
     const map = L.map('map', {
@@ -828,5 +804,144 @@
         map.fitBounds(bounds, { padding: [50, 50] });
     }
 </script>
+
+<!-- 
+<script>
+    let reading = false;
+    let eventSource = null;
+
+    function leerDatos() {
+        const btn = document.getElementById('leerDatos');
+
+        if (!reading) {
+            btn.innerHTML = `
+                <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                <div class="flex align-items-center">
+                    <span class="text-xl font-semibold">Detener</span>
+                </div>
+            `;
+            btn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+            btn.classList.add('bg-blue-700', 'hover:bg-blue-600');
+
+            fetch("{% url 'iniciar_lectura_sensores' %}", {
+                method: "POST",
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(`Error: ${data.error}`);
+                        leerDatos();
+                        return;
+                    }
+
+                    eventSource = new EventSource("{% url 'stream_sensores' %}?sector_id={{ sector.id }}");
+
+                    eventSource.onmessage = function (event) {
+                        const datos = JSON.parse(event.data);
+                        if (datos.status === 'cerrado') {
+                            eventSource.close();
+                            return;
+                        }
+                        if (!datos.error) {
+                            actualizarValores(datos);
+                        }
+                    };
+
+                    eventSource.onerror = function () {
+                        eventSource.close();
+                        leerDatos();
+                    };
+                });
+        } else {
+            btn.innerHTML = `
+                <i class="fa-solid fa-circle-play fa-2x"></i>
+                <div class="flex flex-col align-items-center">
+                    <span class="text-xl font-semibold">Iniciar grabación</span>
+                </div>
+            `;
+            btn.classList.remove('bg-blue-700', 'hover:bg-blue-600');
+            btn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+
+            fetch("{% url 'detener_lectura_sensores' %}", {
+                method: "POST",
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            });
+        }
+
+        reading = !reading;
+    }
+
+    function actualizarValores(datos) {
+        // Temperatura
+        if (datos.temperatura !== undefined && datos.temperatura !== -999) {
+            const tempElement = document.querySelector('[data-sensor="temperatura"]');
+            if (tempElement) tempElement.textContent = `${datos.temperatura.toFixed(1)}°C`;
+        }
+
+        // Humedad
+        if (datos.humedad !== undefined) {
+            const humElement = document.querySelector('[data-sensor="humedad"]');
+            if (humElement) humElement.textContent = `${datos.humedad.toFixed(1)}%`;
+        }
+
+        // Turbidez
+        if (datos.turbidez !== undefined) {
+            const turbElement = document.querySelector('[data-sensor="turbidez"]');
+            if (turbElement) turbElement.textContent = `${datos.turbidez.toFixed(0)} NTU`;
+        }
+
+        // pH
+        if (datos.ph !== undefined) {
+            const phElement = document.querySelector('[data-sensor="ph"]');
+            if (phElement) {
+                phElement.textContent = datos.ph.toFixed(2);
+
+                // Color según pH
+                if (datos.ph < 6.5) {
+                    phElement.className = 'text-xl font-bold text-red-600';
+                } else if (datos.ph > 8.5) {
+                    phElement.className = 'text-xl font-bold text-blue-600';
+                } else {
+                    phElement.className = 'text-xl font-bold text-green-600';
+                }
+            }
+        }
+
+        // Actualizar gráfico
+        pushDataPoint(datos);
+
+        // Animación
+        document.querySelectorAll('[data-sensor]').forEach(el => {
+            const card = el.closest('article');
+            card.classList.add('ring-2', 'ring-green-400');
+            setTimeout(() => card.classList.remove('ring-2', 'ring-green-400'), 500);
+        });
+
+        // Log
+        const logElement = document.querySelector('.bg-slate-900');
+        if (logElement) {
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] Temp: ${datos.temperatura?.toFixed(1)}°C | Turbidez: ${datos.turbidez?.toFixed(0)} NTU | Humedad: ${datos.humedad?.toFixed(1)}% | pH: ${datos.ph?.toFixed(2)}<br>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+    }
+
+    window.addEventListener('beforeunload', function () {
+        if (reading && eventSource) {
+            eventSource.close();
+            fetch("{% url 'detener_lectura_sensores' %}", {
+                method: "POST",
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            });
+        }
+    });
+</script>
+-->
 
 {% endblock %}

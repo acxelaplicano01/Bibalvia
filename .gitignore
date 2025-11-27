@@ -20,6 +20,8 @@ db.sqlite3-journal
 .env.local
 .env.cloud
 
+db.sqlite3
+
 # IDEs
 .vscode/
 .idea/

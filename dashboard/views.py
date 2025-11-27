@@ -43,8 +43,11 @@ SERIAL_PORT = '/dev/ttyACM0'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
 BAUD_RATE = 9600
 TIMEOUT = 3
 
+# Variables globales
 lectura_activa = False
+grabacion_activa = False
 conexion_serial = None
+
 
 @login_required
 def home(request):
@@ -392,75 +395,89 @@ def leer_datos_arduino():
     
     return None
 
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
-def iniciar_lectura_sensores(request):
-    """
-    Iniciar lectura de sensores y conexión WebSocket al cloud.
-    """
+def iniciar_sensores(request):
+    """Solo inicia lectura de Arduino sin guardar"""
     global lectura_activa
     lectura_activa = True
     
-    # Conectar Arduino
     if not conectar_arduino():
-        return JsonResponse({
-            'error': 'No se pudo conectar con Arduino en el puerto serial.'
-        }, status=500)
+        return JsonResponse({'error': 'No se pudo conectar con Arduino'}, status=500)
     
-    # Iniciar conexión WebSocket al cloud (si estamos en LOCAL)
-    if settings.IS_LOCAL:
-        print("🔌 Iniciando conexión WebSocket al cloud...")
-        try:
-            # Crear un nuevo event loop en un thread separado
-            import threading
-            
-            def start_ws_connection():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop.run_until_complete(sensor_ws_client.connect())
-            
-            ws_thread = threading.Thread(target=start_ws_connection, daemon=True)
-            ws_thread.start()
-            ws_thread.join(timeout=5)  # Esperar máximo 5s
-            
-            if sensor_ws_client.connected:
-                print("✅ WebSocket conectado al cloud")
-            else:
-                print("⚠️ WebSocket no conectado, se intentará reconectar automáticamente")
-                
-        except Exception as e:
-            print(f"⚠️ Error iniciando WebSocket: {e}")
-    
-    return JsonResponse({'status': 'iniciado'})
-
+    return JsonResponse({'status': 'sensores_iniciados'})
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def detener_lectura_sensores(request):
-    """
-    Detener lectura de sensores y cerrar conexión WebSocket.
-    """
-    global lectura_activa, conexion_serial
+def detener_sensores(request):
+    """Detiene lectura y grabación"""
+    global lectura_activa, grabacion_activa, conexion_serial
     lectura_activa = False
+    grabacion_activa = False
     
-    # Cerrar serial
     if conexion_serial and conexion_serial.is_open:
         conexion_serial.close()
         conexion_serial = None
     
-    # Cerrar WebSocket (si estamos en LOCAL)
-    if settings.IS_LOCAL and sensor_ws_client.connected:
-        print("🔌 Cerrando conexión WebSocket...")
+    if settings.IS_LOCAL and sensor_ws_client and sensor_ws_client.connected:
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(sensor_ws_client.disconnect())
             loop.close()
-            print("✅ WebSocket cerrado")
         except Exception as e:
             print(f"⚠️ Error cerrando WebSocket: {e}")
     
-    return JsonResponse({'status': 'detenido'})
+    return JsonResponse({'status': 'sensores_detenidos'})
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def iniciar_grabacion(request):
+    """Inicia guardado en DB y envío al cloud"""
+    global grabacion_activa
+    
+    if not lectura_activa:
+        return JsonResponse({'error': 'Debes iniciar los sensores primero'}, status=400)
+    
+    grabacion_activa = True
+    
+    # Conectar WebSocket
+    if settings.IS_LOCAL and enviar_a_nube_ws_sync:
+        try:
+            import threading
+            def start_ws():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(sensor_ws_client.connect())
+            
+            ws_thread = threading.Thread(target=start_ws, daemon=True)
+            ws_thread.start()
+            ws_thread.join(timeout=5)
+        except Exception as e:
+            print(f"⚠️ Error WebSocket: {e}")
+    
+    return JsonResponse({'status': 'grabacion_iniciada'})
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def detener_grabacion(request):
+    """Detiene guardado pero mantiene lectura"""
+    global grabacion_activa
+    grabacion_activa = False
+    
+    # Cerrar WebSocket
+    if settings.IS_LOCAL and sensor_ws_client and sensor_ws_client.connected:
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(sensor_ws_client.disconnect())
+            loop.close()
+        except Exception as e:
+            print(f"⚠️ Error: {e}")
+    
+    return JsonResponse({'status': 'grabacion_detenida'})
 
 
 def stream_sensores(request):
@@ -470,7 +487,7 @@ def stream_sensores(request):
     ACTUALIZADO: Ahora envía datos al cloud vía WebSocket.
     """
     def event_stream():
-        global lectura_activa
+        global lectura_activa, grabacion_activa
         
         sector_id = request.GET.get('sector_id')
         

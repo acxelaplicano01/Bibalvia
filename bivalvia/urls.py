@@ -12,11 +12,6 @@ urlpatterns = [
     path('upload-imagen/', views.upload_imagen_sector, name='upload_imagen_sector'),
     path('borrar-imagen/', views.borrar_imagen_sector, name='borrar_imagen_sector'),
     
-    # Endpoints de sensores (LOCAL)
-    path('iniciar-lectura/', views.iniciar_lectura_sensores, name='iniciar_lectura_sensores'),
-    path('detener-lectura/', views.detener_lectura_sensores, name='detener_lectura_sensores'),
-    path('stream-sensores/', views.stream_sensores, name='stream_sensores'),
-    
     # API Endpoints (CLOUD)
     path('api/test/', api_views.test_api, name='api_test'),
     path('api/lectura/', api_views.recibir_lectura, name='api_recibir_lectura'),
