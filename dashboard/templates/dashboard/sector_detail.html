@@ -399,10 +399,6 @@
 <script>
     const MAX_POINTS = 20;
 
-    function nowLabel() {
-        const now = new Date();
-        return now.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    }
 
     const buffer = {
         labels: [],
@@ -411,6 +407,11 @@
         humedad: [],
         ph: []
     };
+
+    function nowLabel() {
+        const now = new Date();
+        return now.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
 
     const lecturasChart = {{ chart_data_json| safe }};
 
@@ -432,6 +433,7 @@
         }
     }
 
+    // Inicializar Chart.js
     const ctx = document.getElementById('sensorChart').getContext('2d');
     const sensorChart = new Chart(ctx, {
         type: 'line',
@@ -559,20 +561,50 @@
 <script src="{% static 'js/dashboard_websocket.js' %}"></script>
 {% endif %}
 
-
-<!-- SCRIPT PARA LOCAL -->
 {% if IS_LOCAL %}
 <script>
     let sensoresActivos = false;
     let grabacionActiva = false;
-    let eventSource = null;
+    let pollingInterval = null;
 
     function actualizarCards(datos) {
-        document.querySelector('[data-sensor="temperatura"]').textContent = (parseFloat(datos.temperatura) || 0).toFixed(1) + '°C';
+        console.log('🔄 Actualizando:', datos.temperatura);
+        document.querySelector('[data-sensor="temperatura"]').textContent = (parseFloat(datos.temperatura) || 0).toFixed(2) + '°C';
         document.querySelector('[data-sensor="humedad"]').textContent = (parseFloat(datos.humedad) || 0).toFixed(1) + '%';
         document.querySelector('[data-sensor="turbidez"]').textContent = (parseFloat(datos.turbidez) || 0).toFixed(0) + ' NTU';
         document.querySelector('[data-sensor="ph"]').textContent = (parseFloat(datos.ph) || 7.0).toFixed(2);
-        console.log('✅ Cards actualizadas');
+    }
+
+    function iniciarPolling(grabar = false) {
+        console.log('🔄 Iniciando polling...');
+        
+        pollingInterval = setInterval(() => {
+            fetch(`/obtener-lectura/?sector_id={{ sector.id }}`)
+                .then(r => r.json())
+                .then(datos => {
+                    if (datos.temperatura !== undefined) {
+                        actualizarCards(datos);
+                        
+                        if (grabar) {
+                            pushDataPoint({
+                                temperatura: parseFloat(datos.temperatura) || 0,
+                                humedad: parseFloat(datos.humedad) || 0,
+                                turbidez: parseFloat(datos.turbidez) || 0,
+                                ph: parseFloat(datos.ph) || 7.0
+                            });
+                        }
+                    }
+                })
+                .catch(err => console.error('Error polling:', err));
+        }, 2000); // Cada 2 segundos
+    }
+
+    function detenerPolling() {
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+            console.log('⏹️ Polling detenido');
+        }
     }
 
     function toggleSensores() {
@@ -580,50 +612,31 @@
         const btnGrab = document.getElementById('btnGrabacion');
 
         if (!sensoresActivos) {
-            fetch("/iniciar-sensores/", { method: "POST", headers: { 'X-CSRFToken': '{{ csrf_token }}' } })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.error) { alert(data.error); return; }
+            console.log('▶️ Iniciando sensores...');
+            
+            sensoresActivos = true;
+            btn.innerHTML = '<i class="fa-solid fa-stop fa-2x"></i><span class="text-xl font-semibold">Detener Sensores</span>';
+            btn.classList.remove('bg-green-700', 'hover:bg-green-600');
+            btn.classList.add('bg-red-700', 'hover:bg-red-600');
+            btnGrab.disabled = false;
+            btnGrab.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            btnGrab.classList.add('bg-amber-600', 'hover:bg-amber-500');
 
-                    sensoresActivos = true;
-                    btn.innerHTML = '<i class="fa-solid fa-stop fa-2x"></i><span class="text-xl font-semibold">Detener Sensores</span>';
-                    btn.classList.remove('bg-green-700', 'hover:bg-green-600');
-                    btn.classList.add('bg-red-700', 'hover:bg-red-600');
-                    btnGrab.disabled = false;
-                    btnGrab.classList.remove('bg-gray-400', 'cursor-not-allowed');
-                    btnGrab.classList.add('bg-amber-600', 'hover:bg-amber-500');
-
-                    // ✅ URL CORRECTA
-                    console.log('🔌 Conectando SSE...');
-                    eventSource = new EventSource("/stream-sensores/?sector_id={{ sector.id }}&solo_lectura=true");
-
-                    eventSource.onopen = () => console.log('✅ SSE conectado');
-
-                    eventSource.onmessage = (e) => {
-                        console.log('📨', e.data);
-                        const datos = JSON.parse(e.data);
-                        if (!datos.status && !datos.error && !datos.heartbeat) {
-                            actualizarCards(datos);
-                        }
-                    };
-
-                    eventSource.onerror = (e) => console.error('❌ SSE error:', e);
-                });
+            iniciarPolling(false);
 
         } else {
+            console.log('⏹️ Deteniendo sensores...');
             if (grabacionActiva) toggleGrabacion();
-
-            fetch("/detener-sensores/", { method: "POST", headers: { 'X-CSRFToken': '{{ csrf_token }}' } })
-                .then(() => {
-                    sensoresActivos = false;
-                    btn.innerHTML = '<i class="fa-solid fa-circle-play fa-2x"></i><span class="text-xl font-semibold">Iniciar Sensores</span>';
-                    btn.classList.remove('bg-red-700', 'hover:bg-red-600');
-                    btn.classList.add('bg-green-700', 'hover:bg-green-600');
-                    btnGrab.disabled = true;
-                    btnGrab.classList.add('bg-gray-400', 'cursor-not-allowed');
-                    btnGrab.classList.remove('bg-amber-600', 'hover:bg-amber-500', 'bg-blue-700', 'hover:bg-blue-600');
-                    if (eventSource) { eventSource.close(); eventSource = null; }
-                });
+            
+            detenerPolling();
+            
+            sensoresActivos = false;
+            btn.innerHTML = '<i class="fa-solid fa-circle-play fa-2x"></i><span class="text-xl font-semibold">Iniciar Sensores</span>';
+            btn.classList.remove('bg-red-700', 'hover:bg-red-600');
+            btn.classList.add('bg-green-700', 'hover:bg-green-600');
+            btnGrab.disabled = true;
+            btnGrab.classList.add('bg-gray-400', 'cursor-not-allowed');
+            btnGrab.classList.remove('bg-amber-600', 'bg-blue-700');
         }
     }
 
@@ -631,6 +644,8 @@
         const btn = document.getElementById('btnGrabacion');
 
         if (!grabacionActiva) {
+            console.log('💾 Iniciando grabación...');
+            
             fetch("/iniciar-grabacion/", { method: "POST", headers: { 'X-CSRFToken': '{{ csrf_token }}' } })
                 .then(r => r.json())
                 .then(data => {
@@ -641,27 +656,13 @@
                     btn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
                     btn.classList.add('bg-blue-700', 'hover:bg-blue-600');
 
-                    if (eventSource) eventSource.close();
-
-                    console.log('🔌 Reconectando SSE (modo grabación)...');
-                    eventSource = new EventSource("/stream-sensores/?sector_id={{ sector.id }}&grabar=true");
-
-                    eventSource.onmessage = (e) => {
-                        console.log('📨 (grabando)', e.data);
-                        const datos = JSON.parse(e.data);
-                        if (!datos.status && !datos.error && !datos.heartbeat) {
-                            actualizarCards(datos);
-                            pushDataPoint({
-                                temperatura: parseFloat(datos.temperatura) || 0,
-                                humedad: parseFloat(datos.humedad) || 0,
-                                turbidez: parseFloat(datos.turbidez) || 0,
-                                ph: parseFloat(datos.ph) || 7.0
-                            });
-                        }
-                    };
+                    detenerPolling();
+                    iniciarPolling(true); // Ahora actualiza gráfico también
                 });
 
         } else {
+            console.log('⏹️ Deteniendo grabación...');
+            
             fetch("/detener-grabacion/", { method: "POST", headers: { 'X-CSRFToken': '{{ csrf_token }}' } })
                 .then(() => {
                     grabacionActiva = false;
@@ -669,19 +670,13 @@
                     btn.classList.remove('bg-blue-700', 'hover:bg-blue-600');
                     btn.classList.add('bg-amber-600', 'hover:bg-amber-500');
 
-                    if (eventSource) eventSource.close();
-
-                    eventSource = new EventSource("/stream-sensores/?sector_id={{ sector.id }}&solo_lectura=true");
-                    eventSource.onmessage = (e) => {
-                        const datos = JSON.parse(e.data);
-                        if (!datos.status && !datos.error && !datos.heartbeat) actualizarCards(datos);
-                    };
+                    detenerPolling();
+                    iniciarPolling(false); // Solo cards
                 });
         }
     }
 </script>
 {% endif %}
-
 
 
 {% if IS_LOCAL %}

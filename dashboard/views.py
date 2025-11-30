@@ -3,8 +3,8 @@ import json
 import re
 import serial
 import time
-import asyncio
 import requests
+import asyncio
 from django.utils import timezone
 from django.http import JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -72,6 +72,14 @@ def sector_detail(request, id):
     """
     Vista de detalle del sector.
     """
+    # ✅ AGREGAR ESTO AL INICIO
+    if settings.IS_LOCAL:
+        global lectura_activa
+        if not lectura_activa:
+            if conectar_arduino():
+                lectura_activa = True
+                print("✅ Arduino conectado automáticamente")
+    
     sector = Sector.objects.prefetch_related('zonas').get(id=id)
     
     # Parámetros de filtro de fecha
@@ -402,10 +410,12 @@ def leer_datos_arduino():
 @require_http_methods(["POST"])
 def iniciar_sensores(request):
     global lectura_activa
-    lectura_activa = True  # ✅ ACTIVAR
     
     if not conectar_arduino():
         return JsonResponse({'error': 'No se pudo conectar con Arduino'}, status=500)
+    
+    lectura_activa = True
+    print(f"✅ Sensores iniciados - lectura_activa = {lectura_activa}")
     
     return JsonResponse({'status': 'sensores_iniciados'})
 
@@ -480,56 +490,151 @@ def detener_grabacion(request):
     
     return JsonResponse({'status': 'grabacion_detenida'})
 
-
-def stream_sensores(request):
-    def event_stream():
-        global lectura_activa, grabacion_activa
-        
-        sector_id = request.GET.get('sector_id')
-        solo_lectura = request.GET.get('solo_lectura') == 'true'
-        grabar = request.GET.get('grabar') == 'true'
-        
-        # ✅ Mensaje inicial INMEDIATO
-        yield f"data: {json.dumps({'status': 'conectado', 'modo': 'lectura' if solo_lectura else 'grabacion'})}\n\n"
-        
-        if not sector_id:
-            yield f"data: {json.dumps({'error': 'Falta sector_id'})}\n\n"
-            return
-        
-        while lectura_activa:
-            try:
-                datos = leer_datos_arduino()
-                
-                if datos:
-                    # 1. SIEMPRE enviar al navegador PRIMERO
-                    yield f"data: {json.dumps(datos)}\n\n"
-                    
-                    # 2. SOLO si graba (fire-and-forget, no bloquea)
-                    if grabar and grabacion_activa:
-                        marca_tiempo = timezone.now()
-                        
-                        # Guardar local (rápido)
-                        guardar_lectura_local(datos, sector_id, marca_tiempo)
-                        
-                        # Enviar cloud (async, no espera)
-                        if settings.IS_LOCAL and enviar_a_nube_ws_sync:
-                            enviar_a_nube_ws_sync(datos, sector_id, marca_tiempo)
-                
-                else:
-                    yield f"data: {json.dumps({'heartbeat': True})}\n\n"
-                    
-            except Exception as e:
-                print(f"❌ Error en stream: {e}")
-                yield f"data: {json.dumps({'error': str(e)})}\n\n"
-            
-            time.sleep(2)
-        
-        yield f"data: {json.dumps({'status': 'cerrado'})}\n\n"
+# def stream_sensores(request):
+#     """SSE con flush explícito"""
     
-    response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
-    response['Cache-Control'] = 'no-cache'
-    response['X-Accel-Buffering'] = 'no'
-    return response
+#     def event_stream():
+#         global lectura_activa, grabacion_activa
+        
+#         sector_id = request.GET.get('sector_id')
+#         grabar = request.GET.get('grabar') == 'true'
+        
+#         print(f"🔌 SSE iniciado - sector:{sector_id}, grabar:{grabar}, lectura_activa:{lectura_activa}")
+        
+#         # Mensaje inicial con padding para forzar flush
+#         yield ":\n\n"  # Comentario SSE (ignora el navegador)
+#         yield f"data: {json.dumps({'status': 'conectado'})}\n\n"
+        
+#         if not sector_id:
+#             yield f"data: {json.dumps({'error': 'Sin sector_id'})}\n\n"
+#             return
+        
+#         contador = 0
+#         while lectura_activa and contador < 500:
+#             try:
+#                 datos = leer_datos_arduino()
+                
+#                 if datos:
+#                     print(f"📤 Enviando: temp={datos.get('temperatura')}")
+                    
+#                     # Formatear SSE correctamente
+#                     mensaje = f"data: {json.dumps(datos)}\n\n"
+#                     yield mensaje
+                    
+#                     # Si graba
+#                     if grabar and grabacion_activa:
+#                         marca_tiempo = timezone.now()
+#                         guardar_lectura_local(datos, sector_id, marca_tiempo)
+#                         print("💾 Guardado")
+                
+#                 else:
+#                     yield "data: {\"heartbeat\": true}\n\n"
+                    
+#             except Exception as e:
+#                 print(f"❌ Error: {e}")
+#                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            
+#             contador += 1
+#             time.sleep(2)
+        
+#         print("🔌 SSE cerrado")
+#         yield "data: {\"status\": \"cerrado\"}\n\n"
+    
+#     response = StreamingHttpResponse(
+#         event_stream(), 
+#         content_type='text/event-stream; charset=utf-8'
+#     )
+#     response['Cache-Control'] = 'no-cache, no-transform'
+#     response['X-Accel-Buffering'] = 'no'
+#     response['Connection'] = 'keep-alive'
+    
+#     return response
+
+# Nueva vista
+@csrf_exempt
+@require_http_methods(["GET"])
+def obtener_lectura(request):
+    """Obtiene una sola lectura actual"""
+    global lectura_activa, grabacion_activa
+    
+    if not lectura_activa:
+        return JsonResponse({'error': 'Sensores no activos'}, status=400)
+    
+    datos = leer_datos_arduino()
+    
+    if datos:
+        sector_id = request.GET.get('sector_id')
+        
+        # Si está grabando, guardar Y enviar a cloud
+        if grabacion_activa and sector_id:
+            marca_tiempo = timezone.now()
+            
+            # Guardar local
+            guardar_lectura_local(datos, sector_id, marca_tiempo)
+            
+            # Enviar a cloud
+            if settings.IS_LOCAL and enviar_a_nube_ws_sync:
+                enviar_a_nube_ws_sync(datos, sector_id, marca_tiempo)
+        
+        return JsonResponse(datos)
+    else:
+        return JsonResponse({'error': 'Sin datos'}, status=503)
+    
+    
+# def stream_sensores(request):
+#     """Versión SIMPLIFICADA - sin async, sin complicaciones"""
+    
+#     def event_stream():
+#         global lectura_activa, grabacion_activa
+        
+#         sector_id = request.GET.get('sector_id')
+#         grabar = request.GET.get('grabar') == 'true'
+        
+#         print(f"🔌 SSE iniciado - sector:{sector_id}, grabar:{grabar}, lectura_activa:{lectura_activa}")
+        
+#         # Mensaje inicial
+#         yield f"data: {json.dumps({'status': 'conectado'})}\n\n"
+        
+#         if not sector_id:
+#             yield f"data: {json.dumps({'error': 'Sin sector_id'})}\n\n"
+#             return
+        
+#         contador = 0
+#         while lectura_activa and contador < 500:
+#             try:
+#                 datos = leer_datos_arduino()
+                
+#                 if datos:
+#                     print(f"📤 Enviando al navegador: {datos}")
+#                     yield f"data: {json.dumps(datos)}\n\n"
+                    
+#                     # Solo guardar si está grabando
+#                     if grabar and grabacion_activa:
+#                         marca_tiempo = timezone.now()
+#                         guardar_lectura_local(datos, sector_id, marca_tiempo)
+#                         print("💾 Guardado en BD")
+                        
+#                         # SIN ENVÍO A CLOUD POR AHORA
+#                         # Lo agregaremos después cuando esto funcione
+                
+#                 else:
+#                     yield f"data: {json.dumps({'heartbeat': True})}\n\n"
+                    
+#             except Exception as e:
+#                 print(f"❌ Error: {e}")
+#                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            
+#             contador += 1
+#             time.sleep(2)
+        
+#         print("🔌 SSE cerrado")
+#         yield f"data: {json.dumps({'status': 'cerrado'})}\n\n"
+    
+#     response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+#     response['Cache-Control'] = 'no-cache'
+#     response['X-Accel-Buffering'] = 'no'
+#     return response
+
 
 
 def guardar_lectura_local(datos, sector_id, marca_tiempo=None):

@@ -11,7 +11,8 @@ urlpatterns = [
     path('sector/nuevo/', views.sector_create, name='sector_create'),
     
     # Endpoints de sensores (LOCAL)
-    path('stream-sensores/', views.stream_sensores, name='stream_sensores'),
+    # path('stream-sensores/', views.stream_sensores, name='stream_sensores'),
+    path('obtener-lectura/', views.obtener_lectura, name='obtener_lectura'),
     path('iniciar-sensores/', views.iniciar_sensores, name='iniciar_sensores'),
     path('detener-sensores/', views.detener_sensores, name='detener_sensores'),
     path('iniciar-grabacion/', views.iniciar_grabacion, name='iniciar_grabacion'),

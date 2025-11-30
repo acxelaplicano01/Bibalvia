@@ -1,0 +1,484 @@
+<div class="w-full sm:w-1/2 flex flex-col gap-4 h-full">
+            <div class="flex gap-4">
+                <article
+                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                    <i class="fa-solid fa-droplet text-blue-500 fa-2x"></i>
+                    <div class="flex flex-col align-items-center">
+                        <span class="text-xl font-bold">--</span>
+                        <h3 class="text-sm">Humedad</h3>
+                    </div>
+                </article>
+                <article
+                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                    <i class="fa-solid fa-temperature-half text-red-600 fa-2x"></i>
+                    <div class="flex flex-col align-items-center">
+                        <span class="text-xl font-bold">--</span>
+                        <h3 class="text-sm">Temperatura</h3>
+                    </div>
+                </article>
+            </div>
+            <div class="flex gap-4">
+                <article
+                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                    <i class="fa-solid fa-water text-amber-500 fa-2x"></i>
+                    <div class="flex flex-col align-items-center">
+                        <span class="text-xl font-bold">--</span>
+                        <h3 class="text-sm">Turbidez</h3>
+                    </div>
+                </article>
+                <article
+                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                    <i class="fa-solid fa-vial text-green-600 fa-2x"></i>
+                    <div class="flex flex-col align-items-center">
+                        <span class="text-xl font-bold">--</span>
+                        <h3 class="text-sm">Acidez (pH)</h3>
+                    </div>
+                </article>
+            </div>
+            <div class="flex gap-4">
+                <article
+                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                    <i class="fa-solid fa-flask text-rose-300 fa-2x"></i>
+                    <div class="flex flex-col align-items-center">
+                        <span class="text-xl font-bold">--</span>
+                        <h3 class="text-sm">Salinidad</h3>
+                    </div>
+                </article>
+                <article
+                    class="bg-white flex gap-4 p-4 border border-gray-300 rounded-lg shadow-sm h-max w-full items-center">
+                    <i class="fa-solid fa-lungs text-cyan-600 fa-2x"></i>
+                    <div class="flex flex-col align-items-center">
+                        <span class="text-xl font-bold">--</span>
+                        <h3 class="text-sm">Oxígeno</h3>
+                    </div>
+                </article>
+            </div>
+
+            <button type="button" id="leerDatos" onclick="leerDatos()"
+                class="bg-green-700 text-white flex gap-4 px-4 py-6 rounded-lg shadow-md h-max w-full justify-center items-center active:scale-98 hover:bg-green-600 transition-all">
+                <i class="fa-solid fa-circle-play fa-2x"></i>
+                <div class="flex flex-col align-items-center">
+                    <span class="text-xl font-semibold">Leer Sensores</span>
+                </div>
+            </button>
+        </div>
+
+{# Gráfico #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // Buffer de datos para el gráfico
+    const MAX_POINTS = 20;
+    const buffer = {
+        labels: [],
+        temperatura: [],
+        turbidez: [],
+        humedad: []
+    };
+
+    function nowLabel() {
+        const now = new Date();
+        return now.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    // Inicializar Chart.js
+    const ctx = document.getElementById('sensorChart').getContext('2d');
+    const sensorChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: buffer.labels,
+            datasets: [
+                {
+                    label: 'Humedad (%)',
+                    data: buffer.humedad,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13,110,253,0.08)',
+                    tension: 0.25,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Temperatura (°C)',
+                    data: buffer.temperatura,
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220,53,69,0.06)',
+                    tension: 0.25,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Turbidez (NTU)',
+                    data: buffer.turbidez,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245,158,11,0.06)',
+                    tension: 0.25,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            animation: false,
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: { size: 14 },
+                    bodyFont: { size: 13 }
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    beginAtZero: true,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: 'Humedad (%) / Temperatura (°C)'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    beginAtZero: true,
+                    max: 1000,
+                    title: {
+                        display: true,
+                        text: 'Turbidez (NTU)'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    }
+                }
+            }
+        }
+    });
+
+    function pushDataPoint(datos) {
+        buffer.labels.push(nowLabel());
+        buffer.temperatura.push(Number(datos.temperatura?.toFixed(1) || 0));
+        buffer.turbidez.push(Number(datos.turbidez || 0));
+        buffer.humedad.push(Number(datos.humedad?.toFixed(1) || 0));
+
+        // Mantener solo MAX_POINTS
+        if (buffer.labels.length > MAX_POINTS) {
+            buffer.labels.shift();
+            buffer.temperatura.shift();
+            buffer.turbidez.shift();
+            buffer.humedad.shift();
+        }
+
+        // Actualizar gráfico
+        sensorChart.update('none');
+    }
+</script>
+
+<script>
+
+    let reading = false;
+    let eventSource = null;
+
+    function leerDatos() {
+        const btn = document.getElementById('leerDatos');
+
+        if (!reading) {
+            btn.innerHTML = `
+            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+            <div class="flex align-items-center">
+                <span class="text-xl font-semibold">Detener</span>
+            </div>
+        `;
+            btn.classList.remove('bg-green-700', 'hover:bg-green-600');
+            btn.classList.add('bg-blue-700', 'hover:bg-blue-600');
+
+            fetch("{% url 'iniciar_lectura_sensores' %}", {
+                method: "POST",
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(`Error: ${data.error}\nPuerto: ${data.puerto}`);
+                        leerDatos();
+                        return;
+                    }
+
+                    eventSource = new EventSource("{% url 'stream_sensores' %}");
+
+                    eventSource.onmessage = function (event) {
+                        const datos = JSON.parse(event.data);
+
+                        if (datos.status === 'cerrado') {
+                            eventSource.close();
+                            return;
+                        }
+
+                        if (datos.error) {
+                            console.error('Error:', datos.error);
+                            return;
+                        }
+
+                        actualizarValores(datos);
+                    };
+
+                    eventSource.onerror = function (error) {
+                        console.error('Error EventSource:', error);
+                        eventSource.close();
+                        leerDatos();
+                    };
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error al iniciar lectura');
+                    leerDatos();
+                });
+
+        } else {
+            btn.innerHTML = `
+            <i class="fa-solid fa-circle-play fa-2x"></i>
+            <div class="flex flex-col align-items-center">
+                <span class="text-xl font-semibold">Leer Sensores</span>
+            </div>
+        `;
+            btn.classList.remove('bg-blue-700', 'hover:bg-blue-600');
+            btn.classList.add('bg-green-700', 'hover:bg-green-600');
+
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+
+            fetch("{% url 'detener_lectura_sensores' %}", {
+                method: "POST",
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            });
+        }
+
+        reading = !reading;
+    }
+
+    function actualizarValores(datos) {
+        // Temperatura
+        if (datos.temperatura !== undefined && datos.temperatura !== -999) {
+            const tempElement = document.querySelector('.fa-temperature-half').nextElementSibling.querySelector('.font-bold');
+            tempElement.textContent = `${datos.temperatura.toFixed(1)} C°`;
+        }
+
+        // Turbidez
+        if (datos.turbidez !== undefined) {
+            const turbElement = document.querySelector('.fa-water').nextElementSibling.querySelector('.font-bold');
+            turbElement.textContent = datos.turbidez.toFixed(0);
+        }
+
+        // Humedad
+        if (datos.humedad !== undefined) {
+            const humedadElement = document.querySelector('.fa-droplet').nextElementSibling.querySelector('.font-bold');
+            humedadElement.textContent = `${datos.humedad.toFixed(1)}%`;
+        }
+
+        // Actualizar gráfico
+        pushDataPoint(datos);
+
+        // Animación
+        document.querySelectorAll('.fa-temperature-half, .fa-water, .fa-droplet').forEach(icon => {
+            const card = icon.closest('article');
+            card.classList.add('ring-2', 'ring-green-400');
+            setTimeout(() => card.classList.remove('ring-2', 'ring-green-400'), 500);
+        });
+
+        // Log
+        const logElement = document.querySelector('.bg-slate-900');
+        const timestamp = new Date().toLocaleTimeString();
+        logElement.innerHTML += `[${timestamp}] Temp: ${datos.temperatura?.toFixed(1)}°C | Turbidez: ${datos.turbidez?.toFixed(0)} NTU | Humedad: ${datos.humedad?.toFixed(1)}%<br>`;
+        logElement.scrollTop = logElement.scrollHeight;
+    }
+
+    window.addEventListener('beforeunload', function () {
+        if (reading && eventSource) {
+            eventSource.close();
+            fetch("{% url 'detener_lectura_sensores' %}", {
+                method: "POST",
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            });
+        }
+    });
+
+</script>
+
+<script>
+    let contador = {{ siguiente_num }};
+    const sectorID = {{ sector.id }};     // viene de Django
+    const input = document.getElementById('uploadImg');
+    const grid = document.getElementById('previewGrid');
+
+    input.addEventListener('change', () => {
+        const file = input.files[0];
+        if (!file) return;
+
+        // --- PREVIEW EN GRID ---
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.className = "rounded-lg shadow-sm object-cover w-full h-28";
+            grid.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+
+        // --- ENVÍO AL BACKEND ---
+        const formData = new FormData();
+        const extension = file.name.split('.').pop();
+        const newName = `sector${sectorID}-imagen${contador}.${extension}`;
+        formData.append('imagen', file, newName);
+        formData.append('sector_id', sectorID);
+
+        fetch("{% url 'upload_imagen_sector' %}", {
+            method: "POST",
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.ok) {
+                    location.reload(); // Recarga para actualizar siguiente_num
+                }
+            });
+
+        contador++;
+    });
+
+    function borrarImagen(nombre) {
+        fetch("{% url 'borrar_imagen_sector' %}", {
+            method: "POST",
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ nombre: nombre })
+        }).then(() => location.reload());
+    }
+</script>
+
+<script>
+    const lat = {{ sector.latitud }};
+    const lng = {{ sector.longitud }};
+
+    /* prettier-ignore */
+    // Zonas del sector desde Django
+    const zonasDelSector = [
+        {% for zona in sector.zonas.all %}
+    {
+        id: {{ zona.id }},
+        nombre: "{{ zona.nombre|escapejs }}",
+            geopoligono: {{ zona.geopoligono | safe }}
+    } {% if not forloop.last %}, {% endif %}
+    {% endfor %}
+    ];
+
+
+    const map = L.map('map', {
+        center: [lat, lng],
+        zoom: 16,
+        scrollWheelZoom: true,
+        dragging: true,
+        touchZoom: true,
+        doubleClickZoom: true,
+        boxZoom: true,
+        keyboard: false,
+        zoomControl: true
+    });
+
+    // Capas de tiles
+    const openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+    });
+
+    const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles © Esri',
+        maxZoom: 18
+    });
+
+    let currentLayer = openStreetMap;
+    currentLayer.addTo(map);
+
+    document.getElementById('toggleLayer').addEventListener('click', function () {
+        const layerNameSpan = document.getElementById('layerName');
+
+        if (currentLayer === openStreetMap) {
+            map.removeLayer(openStreetMap);
+            esriSatellite.addTo(map);
+            currentLayer = esriSatellite;
+            layerNameSpan.textContent = 'Mapa';
+        } else {
+            map.removeLayer(esriSatellite);
+            openStreetMap.addTo(map);
+            currentLayer = openStreetMap;
+            layerNameSpan.textContent = 'Satélite';
+        }
+    });
+
+    // Dibujar zonas en el mapa
+    zonasDelSector.forEach(zona => {
+        const coords = zona.geopoligono.coordinates[0].map(c => [c[1], c[0]]);
+        const poligono = L.polygon(coords, {
+            color: '#10b981',
+            fillColor: '#10b981',
+            fillOpacity: 0.25,
+            weight: 2
+        }).addTo(map);
+
+        // Tooltip al pasar el mouse
+        poligono.bindTooltip(zona.nombre, {
+            permanent: false,
+            direction: 'center',
+            opacity: 0.9
+        });
+    });
+
+    // Marcador del sector
+    const marker = L.marker([lat, lng], {
+        draggable: false
+    }).addTo(map);
+
+    marker.bindPopup(`
+        <div class="text-center text-xs">
+            <strong>Sector {{ sector.id }}</strong><br>
+            <span>Lat: ${lat}</span><br>
+            <span>Lng: ${lng}</span>
+            ${zonasDelSector.length > 0 ? `
+                <div class="mt-2 pt-2 border-t border-gray-200">
+                    <div class="text-left">
+                        <strong class="text-green-600">Zonas:</strong><br>
+                        ${zonasDelSector.map(z => `<span class="text-xs">• ${z.nombre}</span>`).join('<br>')}
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `);
+
+    // Ajustar vista del mapa para incluir zonas si existen
+    if (zonasDelSector.length > 0) {
+        const bounds = L.latLngBounds([[lat, lng]]);
+        zonasDelSector.forEach(zona => {
+            zona.geopoligono.coordinates[0].forEach(c => {
+                bounds.extend([c[1], c[0]]);
+            });
+        });
+        map.fitBounds(bounds, { padding: [50, 50] });
+    }
+</script>
