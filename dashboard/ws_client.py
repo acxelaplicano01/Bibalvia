@@ -27,6 +27,7 @@ import json
 import logging
 from typing import Optional, Dict, Any
 from django.conf import settings
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -318,21 +319,26 @@ async def enviar_a_nube_ws(datos: Dict[str, Any], sector_id: int, marca_tiempo=N
 # SYNC WRAPPER (para usar en código síncrono)
 # ============================================================================
 
-def enviar_a_nube_ws_sync(datos: Dict[str, Any], sector_id: int, marca_tiempo=None) -> bool:
+def enviar_a_nube_ws_sync(datos, sector_id, marca_tiempo):
     """
-    Wrapper síncrono para usar en código que no es async.
+    Versión sincrónica que ejecuta el envío async en un thread separado.
+    NO BLOQUEA el SSE stream.
+    """
+    def run_in_thread():
+        try:
+            # Crear nuevo loop para este thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            # Ejecutar la coroutine
+            loop.run_until_complete(enviar_a_nube_ws(datos, sector_id, marca_tiempo))
+            
+            loop.close()
+        except Exception as e:
+            print(f"❌ Error en thread async: {e}")
     
-    NOTA: Esto crea un nuevo event loop cada vez, lo cual no es ideal.
-    Para mejor performance, usa la versión async directamente.
-    """
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(
-            enviar_a_nube_ws(datos, sector_id, marca_tiempo)
-        )
-        loop.close()
-        return result
-    except Exception as e:
-        logger.error(f"❌ Error en enviar_a_nube_ws_sync: {e}")
-        return False
+    # Ejecutar en thread separado (fire-and-forget)
+    thread = threading.Thread(target=run_in_thread, daemon=True)
+    thread.start()
+    
+    return True  # Retornar inmediatamente sin esperar

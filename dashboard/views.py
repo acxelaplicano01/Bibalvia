@@ -370,7 +370,7 @@ def conectar_arduino():
     try:
         if conexion_serial is None or not conexion_serial.is_open:
             conexion_serial = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=TIMEOUT)
-            time.sleep(5)
+            time.sleep(2)
         return True
     except serial.SerialException as e:
         print(f"Error conectando Arduino: {e}")
@@ -412,23 +412,24 @@ def iniciar_sensores(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def detener_sensores(request):
-    """Detiene lectura y grabación"""
     global lectura_activa, grabacion_activa, conexion_serial
+    
     lectura_activa = False
     grabacion_activa = False
     
-    if conexion_serial and conexion_serial.is_open:
-        conexion_serial.close()
-        conexion_serial = None
+    print("🛑 Deteniendo sensores...")
     
-    if settings.IS_LOCAL and sensor_ws_client and sensor_ws_client.connected:
+    # Cerrar serial primero
+    if conexion_serial and conexion_serial.is_open:
         try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(sensor_ws_client.disconnect())
-            loop.close()
+            conexion_serial.close()
+            conexion_serial = None
+            print("✅ Serial cerrado")
         except Exception as e:
-            print(f"⚠️ Error cerrando WebSocket: {e}")
+            print(f"⚠️ Error cerrando serial: {e}")
+    
+    # NO cerrar WebSocket aquí (está causando el crash)
+    # El WebSocket se cierra automáticamente cuando detener_grabacion()
     
     return JsonResponse({'status': 'sensores_detenidos'})
 
@@ -481,14 +482,6 @@ def detener_grabacion(request):
 
 
 def stream_sensores(request):
-    """
-    Stream de datos de sensores vía SSE.
-    
-    Modos:
-    - solo_lectura=true: Solo lee y envía datos (NO guarda, NO envía a cloud)
-    - grabar=true: Lee, envía, guarda en BD y envía a cloud
-    """
-    
     def event_stream():
         global lectura_activa, grabacion_activa
         
@@ -496,41 +489,40 @@ def stream_sensores(request):
         solo_lectura = request.GET.get('solo_lectura') == 'true'
         grabar = request.GET.get('grabar') == 'true'
         
-        # Mensaje inicial
-        yield f"data: {json.dumps({'status': 'conectado'})}\n\n"
+        # ✅ Mensaje inicial INMEDIATO
+        yield f"data: {json.dumps({'status': 'conectado', 'modo': 'lectura' if solo_lectura else 'grabacion'})}\n\n"
         
         if not sector_id:
             yield f"data: {json.dumps({'error': 'Falta sector_id'})}\n\n"
             return
         
-        contador = 0
-        while lectura_activa and contador < 500:  # Límite de seguridad
-            datos = leer_datos_arduino()
-            
-            if datos:
-                print(f"📊 Arduino: {datos}")
+        while lectura_activa:
+            try:
+                datos = leer_datos_arduino()
                 
-                # 1. SIEMPRE enviar al navegador
-                yield f"data: {json.dumps(datos)}\n\n"
-                
-                # 2. SOLO si está en modo grabación
-                if grabar and grabacion_activa:
-                    marca_tiempo = timezone.now()
+                if datos:
+                    # 1. SIEMPRE enviar al navegador PRIMERO
+                    yield f"data: {json.dumps(datos)}\n\n"
                     
-                    # Guardar en BD local
-                    print("💾 Guardando en BD local...")
-                    guardar_lectura_local(datos, sector_id, marca_tiempo)
-                    
-                    # Enviar a cloud
-                    if settings.IS_LOCAL and enviar_a_nube_ws_sync:
-                        print("☁️ Enviando a cloud...")
-                        enviar_a_nube_ws_sync(datos, sector_id, marca_tiempo)
+                    # 2. SOLO si graba (fire-and-forget, no bloquea)
+                    if grabar and grabacion_activa:
+                        marca_tiempo = timezone.now()
+                        
+                        # Guardar local (rápido)
+                        guardar_lectura_local(datos, sector_id, marca_tiempo)
+                        
+                        # Enviar cloud (async, no espera)
+                        if settings.IS_LOCAL and enviar_a_nube_ws_sync:
+                            enviar_a_nube_ws_sync(datos, sector_id, marca_tiempo)
                 
-            else:
-                yield f"data: {json.dumps({'error': 'Sin datos'})}\n\n"
+                else:
+                    yield f"data: {json.dumps({'heartbeat': True})}\n\n"
+                    
+            except Exception as e:
+                print(f"❌ Error en stream: {e}")
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
             
-            contador += 1
-            time.sleep(2)  # Leer cada 2 segundos
+            time.sleep(2)
         
         yield f"data: {json.dumps({'status': 'cerrado'})}\n\n"
     
