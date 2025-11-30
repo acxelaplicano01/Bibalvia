@@ -6,7 +6,7 @@ import time
 import requests
 import asyncio
 from django.utils import timezone
-from django.http import JsonResponse, StreamingHttpResponse
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.conf import settings
@@ -188,6 +188,11 @@ def sector_create(request):
     
     Sin cambios - mantiene funcionalidad existente.
     """
+    
+    if settings.IS_CLOUD:
+        messages.error(request, f'No tiene permiso de crear sectores en la Nube')
+        return redirect('home')
+    
     if request.method == 'POST':
         tipo = request.POST.get('tipo')
         
