@@ -577,14 +577,14 @@
 
     function iniciarPolling(grabar = false) {
         console.log('🔄 Iniciando polling...');
-        
+
         pollingInterval = setInterval(() => {
             fetch(`/obtener-lectura/?sector_id={{ sector.id }}`)
                 .then(r => r.json())
                 .then(datos => {
                     if (datos.temperatura !== undefined) {
                         actualizarCards(datos);
-                        
+
                         if (grabar) {
                             pushDataPoint({
                                 temperatura: parseFloat(datos.temperatura) || 0,
@@ -613,7 +613,7 @@
 
         if (!sensoresActivos) {
             console.log('▶️ Iniciando sensores...');
-            
+
             sensoresActivos = true;
             btn.innerHTML = '<i class="fa-solid fa-stop fa-2x"></i><span class="text-xl font-semibold">Detener Sensores</span>';
             btn.classList.remove('bg-green-700', 'hover:bg-green-600');
@@ -626,10 +626,21 @@
 
         } else {
             console.log('⏹️ Deteniendo sensores...');
-            if (grabacionActiva) toggleGrabacion();
-            
+
+            // ✅ Detener grabación SIN reiniciar polling
+            if (grabacionActiva) {
+                fetch("/detener-grabacion/", { method: "POST", headers: { 'X-CSRFToken': '{{ csrf_token }}' } })
+                    .then(() => {
+                        grabacionActiva = false;
+                        btnGrab.innerHTML = '<i class="fa-solid fa-circle-play fa-2x"></i><span class="text-xl font-semibold">Iniciar Grabación</span>';
+                        btnGrab.classList.remove('bg-blue-700', 'hover:bg-blue-600');
+                        btnGrab.classList.add('bg-amber-600', 'hover:bg-amber-500');
+                    });
+            }
+
+            // Detener polling
             detenerPolling();
-            
+
             sensoresActivos = false;
             btn.innerHTML = '<i class="fa-solid fa-circle-play fa-2x"></i><span class="text-xl font-semibold">Iniciar Sensores</span>';
             btn.classList.remove('bg-red-700', 'hover:bg-red-600');
@@ -645,7 +656,7 @@
 
         if (!grabacionActiva) {
             console.log('💾 Iniciando grabación...');
-            
+
             fetch("/iniciar-grabacion/", { method: "POST", headers: { 'X-CSRFToken': '{{ csrf_token }}' } })
                 .then(r => r.json())
                 .then(data => {
@@ -662,7 +673,7 @@
 
         } else {
             console.log('⏹️ Deteniendo grabación...');
-            
+
             fetch("/detener-grabacion/", { method: "POST", headers: { 'X-CSRFToken': '{{ csrf_token }}' } })
                 .then(() => {
                     grabacionActiva = false;
