@@ -135,7 +135,7 @@
                     <span class="text-xl font-semibold">Iniciar Sensores</span>
                 </button>
                 <button id="btnGrabacion" onclick="toggleGrabacion()" disabled
-                    class="bg-amber-600 text-white flex gap-4 px-4 py-6 rounded-lg shadow-md h-max w-full justify-center items-center active:scale-98 hover:bg-amber-500 transition-all">
+                    class="bg-gray-400 cursor-not-allowed text-white flex gap-4 px-4 py-6 rounded-lg shadow-md h-max w-full justify-center items-center active:scale-98 hover:bg-amber-500 transition-all">
                     <i class="fa-solid fa-circle-play fa-2x"></i>
                     <div class="flex flex-col align-items-center">
                         <span class="text-xl font-semibold">Iniciar grabación</span>
@@ -412,8 +412,8 @@
         ph: []
     };
 
-    {% if IS_CLOUD %}
     const lecturasChart = {{ chart_data_json| safe }};
+
     if (lecturasChart && lecturasChart.length > 0) {
         lecturasChart.forEach(l => {
             buffer.labels.push(l.marca_tiempo);
@@ -431,7 +431,6 @@
             buffer.ph.push(7);
         }
     }
-    {% endif %}
 
     const ctx = document.getElementById('sensorChart').getContext('2d');
     const sensorChart = new Chart(ctx, {
@@ -560,19 +559,50 @@
 <script src="{% static 'js/dashboard_websocket.js' %}"></script>
 {% endif %}
 
-<!-- Sensores para LOCAL solamente -->
+
+<!-- SCRIPT PARA LOCAL -->
 {% if IS_LOCAL %}
 <script>
     let sensoresActivos = false;
     let grabacionActiva = false;
     let eventSource = null;
 
+    // =====================================================
+    // FUNCIÓN: Actualizar valores en las cards
+    // =====================================================
+    function actualizarCards(datos) {
+        const tempEl = document.querySelector('[data-sensor="temperatura"]');
+        const humEl = document.querySelector('[data-sensor="humedad"]');
+        const turbEl = document.querySelector('[data-sensor="turbidez"]');
+        const phEl = document.querySelector('[data-sensor="ph"]');
+
+        if (tempEl) tempEl.textContent = (parseFloat(datos.temperatura) || 0).toFixed(1) + '°C';
+        if (humEl) humEl.textContent = (parseFloat(datos.humedad) || 0).toFixed(1) + '%';
+        if (turbEl) turbEl.textContent = (parseFloat(datos.turbidez) || 0).toFixed(0) + ' NTU';
+        if (phEl) phEl.textContent = (parseFloat(datos.ph) || 7.0).toFixed(2);
+    }
+
+    // =====================================================
+    // FUNCIÓN: Actualizar gráfico
+    // =====================================================
+    function actualizarGrafico(datos) {
+        pushDataPoint({
+            temperatura: parseFloat(datos.temperatura) || 0,
+            humedad: parseFloat(datos.humedad) || 0,
+            turbidez: parseFloat(datos.turbidez) || 0,
+            ph: parseFloat(datos.ph) || 7.0
+        });
+    }
+
+    // =====================================================
+    // BOTÓN: Iniciar/Detener Sensores
+    // =====================================================
     function toggleSensores() {
         const btn = document.getElementById('btnSensores');
         const btnGrab = document.getElementById('btnGrabacion');
 
         if (!sensoresActivos) {
-            // Iniciar sensores
+            // ===== INICIAR SENSORES =====
             fetch("{% url 'iniciar_sensores' %}", {
                 method: "POST",
                 headers: { 'X-CSRFToken': '{{ csrf_token }}' }
@@ -594,17 +624,36 @@
                     btnGrab.classList.remove('bg-gray-400', 'cursor-not-allowed');
                     btnGrab.classList.add('bg-amber-600', 'hover:bg-amber-500');
 
-                    // Iniciar SSE
-                    eventSource = new EventSource("{% url 'stream_sensores' %}?sector_id={{ sector.id }}");
-                    eventSource.onmessage = (e) => {
-                        const datos = JSON.parse(e.data);
-                        if (datos.status !== 'cerrado' && !datos.error) {
-                            actualizarValores(datos);
+                    // Conectar SSE
+                    eventSource = new EventSource("{% url 'stream_sensores' %}?sector_id={{ sector.id }}&solo_lectura=true");
+
+                    eventSource.onmessage = function (e) {
+                        console.log('📨 SSE:', e.data);
+
+                        try {
+                            const datos = JSON.parse(e.data);
+
+                            if (datos.status || datos.error) return; // Ignorar mensajes de estado
+
+                            // Solo actualizar cards (no gráfico, no guardar)
+                            actualizarCards(datos);
+
+                        } catch (error) {
+                            console.error('Error:', error);
                         }
                     };
+
+                    eventSource.onerror = function (e) {
+                        console.error('Error SSE:', e);
+                    };
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error al iniciar sensores');
                 });
+
         } else {
-            // Detener sensores
+            // ===== DETENER SENSORES =====
             if (grabacionActiva) toggleGrabacion(); // Detener grabación primero
 
             fetch("{% url 'detener_sensores' %}", {
@@ -621,15 +670,22 @@
                     btnGrab.classList.add('bg-gray-400', 'cursor-not-allowed');
                     btnGrab.classList.remove('bg-amber-600', 'hover:bg-amber-500', 'bg-blue-700', 'hover:bg-blue-600');
 
-                    if (eventSource) eventSource.close();
+                    if (eventSource) {
+                        eventSource.close();
+                        eventSource = null;
+                    }
                 });
         }
     }
 
+    // =====================================================
+    // BOTÓN: Iniciar/Detener Grabación
+    // =====================================================
     function toggleGrabacion() {
         const btn = document.getElementById('btnGrabacion');
 
         if (!grabacionActiva) {
+            // ===== INICIAR GRABACIÓN =====
             fetch("{% url 'iniciar_grabacion' %}", {
                 method: "POST",
                 headers: { 'X-CSRFToken': '{{ csrf_token }}' }
@@ -645,8 +701,32 @@
                     btn.innerHTML = '<i class="fa-solid fa-stop fa-2x"></i><span class="text-xl font-semibold">Detener Grabación</span>';
                     btn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
                     btn.classList.add('bg-blue-700', 'hover:bg-blue-600');
+
+                    // Reconectar SSE con modo grabación
+                    if (eventSource) eventSource.close();
+
+                    eventSource = new EventSource("{% url 'stream_sensores' %}?sector_id={{ sector.id }}&grabar=true");
+
+                    eventSource.onmessage = function (e) {
+                        console.log('📨 SSE (grabando):', e.data);
+
+                        try {
+                            const datos = JSON.parse(e.data);
+
+                            if (datos.status || datos.error) return;
+
+                            // Actualizar cards Y gráfico
+                            actualizarCards(datos);
+                            actualizarGrafico(datos);
+
+                        } catch (error) {
+                            console.error('Error:', error);
+                        }
+                    };
                 });
+
         } else {
+            // ===== DETENER GRABACIÓN =====
             fetch("{% url 'detener_grabacion' %}", {
                 method: "POST",
                 headers: { 'X-CSRFToken': '{{ csrf_token }}' }
@@ -656,11 +736,30 @@
                     btn.innerHTML = '<i class="fa-solid fa-circle-play fa-2x"></i><span class="text-xl font-semibold">Iniciar Grabación</span>';
                     btn.classList.remove('bg-blue-700', 'hover:bg-blue-600');
                     btn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+
+                    // Volver a modo solo lectura
+                    if (eventSource) eventSource.close();
+
+                    eventSource = new EventSource("{% url 'stream_sensores' %}?sector_id={{ sector.id }}&solo_lectura=true");
+
+                    eventSource.onmessage = function (e) {
+                        try {
+                            const datos = JSON.parse(e.data);
+                            if (datos.status || datos.error) return;
+                            actualizarCards(datos); // Solo cards, no gráfico
+                        } catch (error) {
+                            console.error('Error:', error);
+                        }
+                    };
                 });
         }
     }
 </script>
+{% endif %}
 
+
+
+{% if IS_LOCAL %}
 <!-- Image Upload (LOCAL only) -->
 <script>
     let contador = {{ siguiente_num }};
@@ -720,12 +819,16 @@
     const zonasDelSector = [
         {% for zona in sector.zonas.all %}
     {
-        id: {{ zona.id }},
-        nombre: "{{ zona.nombre|escapejs }}",
-            geopoligono: {{ zona.geopoligono | safe }}
+        id: [{{ zona.id }}],
+    nombre: "{{ zona.nombre|escapejs }}",
+
+        // Hice esta aberración porque el formatter me separaba las llaves...
+        geopoligono: [{{ zona.geopoligono | safe }}][0],
+        
     } {% if not forloop.last %}, {% endif %}
     {% endfor %}
     ];
+
 
     const map = L.map('map', {
         center: [lat, lng],
@@ -810,6 +913,5 @@
         map.fitBounds(bounds, { padding: [50, 50] });
     }
 </script>
-
 
 {% endblock %}

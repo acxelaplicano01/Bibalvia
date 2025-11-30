@@ -40,8 +40,8 @@ if settings.IS_LOCAL:
         enviar_a_nube_ws_sync = None
 
 # Configuración serial
-SERIAL_PORT = '/dev/ttyACM0'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
-# SERIAL_PORT = 'COM3'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
+# SERIAL_PORT = '/dev/ttyACM0'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
+SERIAL_PORT = 'COM3'  # Ajustar: Windows=COM3, Linux=/dev/ttyACM0
 BAUD_RATE = 9600
 TIMEOUT = 3
 
@@ -71,8 +71,6 @@ def home(request):
 def sector_detail(request, id):
     """
     Vista de detalle del sector.
-    
-    Sin cambios - mantiene funcionalidad existente.
     """
     sector = Sector.objects.prefetch_related('zonas').get(id=id)
     
@@ -173,6 +171,8 @@ def sector_detail(request, id):
         'fecha_fin': fecha_fin.strftime('%Y-%m-%dT%H:%M'),
     }
     return render(request, 'dashboard/sector_detail.html', context)
+
+
 @login_required
 def sector_create(request):
     """
@@ -398,13 +398,11 @@ def leer_datos_arduino():
     return None
 
 
-
 @csrf_exempt
 @require_http_methods(["POST"])
 def iniciar_sensores(request):
-    """Solo inicia lectura de Arduino sin guardar"""
     global lectura_activa
-    lectura_activa = True
+    lectura_activa = True  # ✅ ACTIVAR
     
     if not conectar_arduino():
         return JsonResponse({'error': 'No se pudo conectar con Arduino'}, status=500)
@@ -484,55 +482,63 @@ def detener_grabacion(request):
 
 def stream_sensores(request):
     """
-    Stream de datos de sensores vía Server-Sent Events (SSE).
+    Stream de datos de sensores vía SSE.
     
-    ACTUALIZADO: Ahora envía datos al cloud vía WebSocket.
+    Modos:
+    - solo_lectura=true: Solo lee y envía datos (NO guarda, NO envía a cloud)
+    - grabar=true: Lee, envía, guarda en BD y envía a cloud
     """
+    
     def event_stream():
         global lectura_activa, grabacion_activa
         
         sector_id = request.GET.get('sector_id')
+        solo_lectura = request.GET.get('solo_lectura') == 'true'
+        grabar = request.GET.get('grabar') == 'true'
+        
+        # Mensaje inicial
+        yield f"data: {json.dumps({'status': 'conectado'})}\n\n"
         
         if not sector_id:
             yield f"data: {json.dumps({'error': 'Falta sector_id'})}\n\n"
             return
         
-        while lectura_activa:
+        contador = 0
+        while lectura_activa and contador < 500:  # Límite de seguridad
             datos = leer_datos_arduino()
             
             if datos:
-                print(f"📊 Datos recibidos del Arduino: {datos}")
+                print(f"📊 Arduino: {datos}")
                 
-                # Generar UN SOLO timestamp para toda la lectura
-                marca_tiempo = timezone.now()
-                
-                # 1. Enviar al navegador (SSE)
+                # 1. SIEMPRE enviar al navegador
                 yield f"data: {json.dumps(datos)}\n\n"
                 
-                # 2. Guardar en base de datos local
-                print(f"💾 Guardando en base de datos local...")
-                guardar_lectura_local(datos, sector_id, marca_tiempo)
+                # 2. SOLO si está en modo grabación
+                if grabar and grabacion_activa:
+                    marca_tiempo = timezone.now()
+                    
+                    # Guardar en BD local
+                    print("💾 Guardando en BD local...")
+                    guardar_lectura_local(datos, sector_id, marca_tiempo)
+                    
+                    # Enviar a cloud
+                    if settings.IS_LOCAL and enviar_a_nube_ws_sync:
+                        print("☁️ Enviando a cloud...")
+                        enviar_a_nube_ws_sync(datos, sector_id, marca_tiempo)
                 
-                # 3. Enviar al cloud vía WebSocket (si estamos en LOCAL)
-                if settings.IS_LOCAL and enviar_a_nube_ws_sync:  # ← Agrega validación
-                    print(f"☁️ Enviando al cloud vía WebSocket...")
-                    success = enviar_a_nube_ws_sync(datos, sector_id, marca_tiempo)
-                                    
-                    if success:
-                        print("✅ Datos enviados al cloud vía WebSocket")
-                    else:
-                        print("⚠️ Error enviando al cloud, se reintentará")
             else:
                 yield f"data: {json.dumps({'error': 'Sin datos'})}\n\n"
             
-            time.sleep(5)
+            contador += 1
+            time.sleep(2)  # Leer cada 2 segundos
         
-        yield "data: {\"status\": \"cerrado\"}\n\n"
+        yield f"data: {json.dumps({'status': 'cerrado'})}\n\n"
     
     response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
     response['Cache-Control'] = 'no-cache'
     response['X-Accel-Buffering'] = 'no'
     return response
+
 
 def guardar_lectura_local(datos, sector_id, marca_tiempo=None):
     """
